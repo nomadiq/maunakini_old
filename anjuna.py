@@ -75,6 +75,96 @@ def plot_2d_nuslist(nuslist):
 
     plt.scatter(x, y)
 
+
+def dd2g(dspfvs, decim):
+
+    dspdic = {
+        10: {
+            2: 44.75,
+            3: 33.5,
+            4: 66.625,
+            6: 59.083333333333333,
+            8: 68.5625,
+            12: 60.375,
+            16: 69.53125,
+            24: 61.020833333333333,
+            32: 70.015625,
+            48: 61.34375,
+            64: 70.2578125,
+            96: 61.505208333333333,
+            128: 70.37890625,
+            192: 61.5859375,
+            256: 70.439453125,
+            384: 61.626302083333333,
+            512: 70.4697265625,
+            768: 61.646484375,
+            1024: 70.48486328125,
+            1536: 61.656575520833333,
+            2048: 70.492431640625,
+            },
+        11: {
+            2: 46.,
+            3: 36.5,
+            4: 48.,
+            6: 50.166666666666667,
+            8: 53.25,
+            12: 69.5,
+            16: 72.25,
+            24: 70.166666666666667,
+            32: 72.75,
+            48: 70.5,
+            64: 73.,
+            96: 70.666666666666667,
+            128: 72.5,
+            192: 71.333333333333333,
+            256: 72.25,
+            384: 71.666666666666667,
+            512: 72.125,
+            768: 71.833333333333333,
+            1024: 72.0625,
+            1536: 71.916666666666667,
+            2048: 72.03125
+            },
+        12: {
+            2: 46.,
+            3: 36.5,
+            4: 48.,
+            6: 50.166666666666667,
+            8: 53.25,
+            12: 69.5,
+            16: 71.625,
+            24: 70.166666666666667,
+            32: 72.125,
+            48: 70.5,
+            64: 72.375,
+            96: 70.666666666666667,
+            128: 72.5,
+            192: 71.333333333333333,
+            256: 72.25,
+            384: 71.666666666666667,
+            512: 72.125,
+            768: 71.833333333333333,
+            1024: 72.0625,
+            1536: 71.916666666666667,
+            2048: 72.03125
+            },
+        13: {
+            2: 2.75,
+            3: 2.8333333333333333,
+            4: 2.875,
+            6: 2.9166666666666667,
+            8: 2.9375,
+            12: 2.9583333333333333,
+            16: 2.96875,
+            24: 2.9791666666666667,
+            32: 2.984375,
+            48: 2.9895833333333333,
+            64: 2.9921875,
+            96: 2.9947916666666667
+            }
+        }
+    return dspdic[dspfvs][decim]
+
 # ------------------------------------- #
 #               Classes                 #
 # ------------------------------------- #
@@ -89,6 +179,7 @@ class NUSData:
     def __init__(self, data_dir='.', ser_file='ser', nuslist='nuslist',
                  points=None, decim=None, dspfvs=None, grpdly=None):
         
+        p0 = dec = dsp = grp = 0
         my_file = Path(data_dir+"/acqus")
         if my_file.is_file():
             acqus_file = open(data_dir+"/acqus", "r")
@@ -108,24 +199,27 @@ class NUSData:
                 
             acqus_file.close()
 
-        if not decim:
-            decim = dec
-        if not dspfvs:
-            dspfvs = dsp
-        if not grpdly:
-            if 'grp' in locals():
-                grpdly = grp
-            else:
-                grpdly = self.dd2g(dspfvs, decim)
-            
-        points_in_direct_fid = p0*2
+        if grp and not grpdly:
+            grpdly = grp
+
+        elif decim and dspfvs:
+            grpdly = dd2g(dspfvs, decim)
+
+        elif dec and dsp:
+            grpdly = dd2g(dsp, dec)
+
+        if not points:
+            points_in_direct_fid = p0*2
+        else:
+            points_in_direct_fid = points
+
         print('Number of R+I points: '+str(points_in_direct_fid))
         print('DECIM= '+str(decim)+' DSPFVS= '+str(dspfvs)+' GRPDLY= '+str(grpdly))
         
         # we need ot know how many points are in the direct dimension
         self.pointsInDirectFid = points_in_direct_fid
         
-        # lets open and parse the nuslist file - or sched file - of samples taken
+        # lets open and parse the nuslist file of samples taken
         with open(data_dir+'/'+nuslist, 'r') as nuslist_file:
             lines = nuslist_file.readlines()
             nuslist = []
@@ -182,102 +276,13 @@ class NUSData:
     
     def convert_bruker(self, grpdly):
         # edit the number of points in first dimension after Bruker filter removal
-        self.points = len(remove_bruker_filter(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly))
+        # self.points = len(remove_bruker_filter(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly))
         # zero fill in a 3D matrix with complex zeros
         # load the data
-        for ii in range(self.nusPoints): #
+        for ii in range(self.nusPoints):  #
             for i in range(4):
                 fid = remove_bruker_filter(make_complex(np.copy(self.nusData[:, i, ii])), grpdly)
-                self.convertedNUSData[0:len(fid),i,ii] = fid
-
-    def dd2g(self, dspfvs, decim):
-
-        dspdic = {
-                10: {
-                    2: 44.75,
-                    3: 33.5,
-                    4: 66.625,
-                    6: 59.083333333333333,
-                    8: 68.5625,
-                    12: 60.375,
-                    16: 69.53125,
-                    24: 61.020833333333333,
-                    32: 70.015625,
-                    48: 61.34375,
-                    64: 70.2578125,
-                    96: 61.505208333333333,
-                    128: 70.37890625,
-                    192: 61.5859375,
-                    256: 70.439453125,
-                    384: 61.626302083333333,
-                    512: 70.4697265625,
-                    768: 61.646484375,
-                    1024: 70.48486328125,
-                    1536: 61.656575520833333,
-                    2048: 70.492431640625,
-                    },
-                11: {
-                    2: 46.,
-                    3: 36.5,
-                    4: 48.,
-                    6: 50.166666666666667,
-                    8: 53.25,
-                    12: 69.5,
-                    16: 72.25,
-                    24: 70.166666666666667,
-                    32: 72.75,
-                    48: 70.5,
-                    64: 73.,
-                    96: 70.666666666666667,
-                    128: 72.5,
-                    192: 71.333333333333333,
-                    256: 72.25,
-                    384: 71.666666666666667,
-                    512: 72.125,
-                    768: 71.833333333333333,
-                    1024: 72.0625,
-                    1536: 71.916666666666667,
-                    2048: 72.03125
-                    },
-                12: {
-                    2: 46.,
-                    3: 36.5,
-                    4: 48.,
-                    6: 50.166666666666667,
-                    8: 53.25,
-                    12: 69.5,
-                    16: 71.625,
-                    24: 70.166666666666667,
-                    32: 72.125,
-                    48: 70.5,
-                    64: 72.375,
-                    96: 70.666666666666667,
-                    128: 72.5,
-                    192: 71.333333333333333,
-                    256: 72.25,
-                    384: 71.666666666666667,
-                    512: 72.125,
-                    768: 71.833333333333333,
-                    1024: 72.0625,
-                    1536: 71.916666666666667,
-                    2048: 72.03125
-                    },
-                13: {
-                    2: 2.75,
-                    3: 2.8333333333333333,
-                    4: 2.875,
-                    6: 2.9166666666666667,
-                    8: 2.9375,
-                    12: 2.9583333333333333,
-                    16: 2.96875,
-                    24: 2.9791666666666667,
-                    32: 2.984375,
-                    48: 2.9895833333333333,
-                    64: 2.9921875,
-                    96: 2.9947916666666667
-                    }
-                }
-        return dspdic[dspfvs][decim]
+                self.convertedNUSData[0:len(fid), i, ii] = fid
 
     def order_data(self):
         # we want some way to know the order of the samples. This generates indexes
@@ -309,14 +314,18 @@ class NUSData:
         # f = open(file, 'w')
         # f.write(str(self.nuslist))
         np.savetxt(file, self.nusList, fmt='%i', delimiter='\t')
-        
+
+
 # define class for Linear bruker data - this includes the number of points in each dimensiom
 # and assumes Bruker ser file the object contains the entire serial file data
 # points is a tuple of length that matches the number of dimension and each value is the 
 # number of complex points . e.g. (1024, 32, 64) would be a 3D expeirment 
 # with 1024 complex points in direct dimension (T3) and 32 complex points in T2 and 64 complex points in T1. 
 # the order of this tuple is strictly important. Order should be (T4), (T3), (T2), T1
+
+
 class LINData:
+
     def __init__(self, dataDir='.', serFile = 'ser', points=None, ddim=None, decim=None, dspfvs=None, grpdly=None):
 
         my_file = Path(dataDir+"/acqus")
@@ -419,20 +428,20 @@ class LINData:
         self.lindata = np.reshape(self.lindata, (pointsnp)*2, order='F')
         
         # TODO - set up some sort of sanity test
-        #if len(self.lindata) == self.datasize:
+        # if len(self.lindata) == self.datasize:
         #    self.sane = True
-        #else:
+        # else:
         #    self.sane = False
         
-        ### lets convert the data (only bruker right now)
-        if (decim and dspfvs):
+        # lets convert the data (only bruker right now)
+        if decim and dspfvs:
             if grpdly:
                 self.convertBruker(grpdly)
             else:
                 grpdly = self.dd2g(dspfvs,decim)
                 self.convertBruker(grpdly)
             
-        elif (grpdly and not decim and not dspfvs):
+        elif grpdly and not decim and not dspfvs:
             self.convertBruker(grpdly)
             
         else:
@@ -524,6 +533,7 @@ class LINData:
                     96: 2.9947916666666667
                     }
                 }
+
         return dspDic[dspfvs][decim]
         
         
