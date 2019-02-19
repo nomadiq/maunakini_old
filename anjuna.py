@@ -243,7 +243,8 @@ class NUSData:
 
         # bruker data is four bytes per point so
         # len(nus_data) should equal 4 * 2**self.nus_dimensions * self.nus_points * self.points_in_direct_fid
-        if 4 * 2**self.nusDimensions * self.nusPoints * self.pointsInDirectFid == len(self.nusData):
+
+        if 4 * 2**self.nusDimensions * self.nusPoints * self.pointsInDirectFid == 4*len(self.nusData):
             self.sane = True
         else:
             self.sane = False
