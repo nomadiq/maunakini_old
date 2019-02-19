@@ -218,7 +218,7 @@ class NUSData:
         
         # we need ot know how many points are in the direct dimension
         self.pointsInDirectFid = points_in_direct_fid
-        
+
         # lets open and parse the nuslist file of samples taken
         with open(data_dir+'/'+nuslist, 'r') as nuslist_file:
             lines = nuslist_file.readlines()
@@ -238,7 +238,6 @@ class NUSData:
         # self.ordered_nuslist_index = np.lexsort((self.nuslist[:,0], self.nuslist[:,1]))
         
         # lets load in the actual serial data
-
         with open(data_dir+'/'+ser_file, 'rb') as serial_file:
             self.nusData = np.frombuffer(serial_file.read(), dtype='<i4')
 
@@ -248,17 +247,15 @@ class NUSData:
             self.sane = True
         else:
             self.sane = False
-        
+
         # reshape the data
         self.nusData = np.reshape(self.nusData, (self.pointsInDirectFid, 4, self.nusPoints), order='F')
-        
-        # remove bruker filter
-        print('remove bruker filter')
-        self.convert_bruker(grpdly)
-
+        self.points = len(remove_bruker_filter(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly))
+        print('converted points: ', self.points)
         self.convertedNUSData = np.zeros((self.points, 4, self.nusPoints), dtype='complex128')
 
-        self.points = len(remove_bruker_filter(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly))
+        # remove bruker filter
+        self.convert_bruker(grpdly)
 
         self.orderedNUSlistIndex = np.lexsort((self.nusList[:, 0], self.nusList[:, 1]))
 
@@ -293,10 +290,10 @@ class NUSData:
 
         ordered_data = np.zeros((self.pointsInDirectFid, 4, self.nusPoints), dtype='int64')
         ordered_converted_data = np.zeros((self.points, 4, self.nusPoints), dtype='complex128')
-        # print(len(ordered_data))
+
         i = 0
         for point in self.orderedNUSlistIndex:
-            # self.nusData[:,i,ii]
+
             ordered_data[:, :, i] = self.nusData[:, :, point]
             ordered_converted_data[:, :, i] = self.convertedNUSData[:, :, point]
             i += 1
@@ -335,6 +332,7 @@ class LINData:
                 if "##$TD=" in line: 
                     (name, value) = line.split()
                     p0 = int(int(value)/2)
+
                 if "##$DECIM=" in line:
                     (name, value) = line.split()
                     decf = float(value)
