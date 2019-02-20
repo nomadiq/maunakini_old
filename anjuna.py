@@ -256,7 +256,10 @@ class NUSData:
         self.convertedNUSData = np.zeros((self.points, 4, self.nusPoints), dtype='complex128')
 
         # remove bruker filter
-        self.convert_bruker(grpdly)
+        for ii in range(self.nusPoints):  #
+            for i in range(4):
+                fid = remove_bruker_filter(make_complex(np.copy(self.nusData[:, i, ii])), grpdly)
+                self.convertedNUSData[0:len(fid), i, ii] = fid
 
         self.orderedNUSlistIndex = np.lexsort((self.nusList[:, 0], self.nusList[:, 1]))
 
@@ -271,23 +274,8 @@ class NUSData:
         self.nusData = self.nusData[:, :, 0:trunc]
         self.convertedNUSData = self.convertedNUSData[:, :, 0:trunc]
         self.nusPoints = len(self.nusList)
-    
-    def convert_bruker(self, grpdly):
-        # edit the number of points in first dimension after Bruker filter removal
-        # self.points = len(remove_bruker_filter(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly))
-        # zero fill in a 3D matrix with complex zeros
-        # load the data
-        for ii in range(self.nusPoints):  #
-            for i in range(4):
-                fid = remove_bruker_filter(make_complex(np.copy(self.nusData[:, i, ii])), grpdly)
-                self.convertedNUSData[0:len(fid), i, ii] = fid
 
     def order_data(self):
-        # we want some way to know the order of the samples. This generates indexes
-        # that give ordered samples from nuslist based on first column being fast dimension
-
-        # print(self.nusList[self.ordered_nuslist_index])
-        # orderedData = np.zeros( 2**self.nusDimensions * self.nusPoints * self.pointsInDirectFid)
 
         ordered_data = np.zeros((self.pointsInDirectFid, 4, self.nusPoints), dtype='int64')
         ordered_converted_data = np.zeros((self.points, 4, self.nusPoints), dtype='complex128')
@@ -305,6 +293,7 @@ class NUSData:
         self.nusList = self.nusList[self.orderedNUSlistIndex]
     
     def write_ser(self, file):
+
         f = open(file, 'wb')
         f.write(self.nusData.astype('<i4').tostring())
         
@@ -312,6 +301,9 @@ class NUSData:
         # f = open(file, 'w')
         # f.write(str(self.nuslist))
         np.savetxt(file, self.nusList, fmt='%i', delimiter='\t')
+
+    def fids(self, fids):
+        return self.convertedNUSData.T[fids][0]
 
 
 # define class for Linear bruker data - this includes the number of points in each dimensiom
