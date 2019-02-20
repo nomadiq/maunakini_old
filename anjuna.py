@@ -302,8 +302,8 @@ class NUSData:
         # f.write(str(self.nuslist))
         np.savetxt(file, self.nusList, fmt='%i', delimiter='\t')
 
-    def fids(self, fids):
-        return self.convertedNUSData.T[fids][0]
+    def __getitem__(self, sliced):
+        return self.convertedNUSData.T[sliced]
 
 
 # define class for Linear bruker data - this includes the number of points in each dimensiom
@@ -316,11 +316,11 @@ class NUSData:
 
 class LINData:
 
-    def __init__(self, dataDir='.', serFile = 'ser', points=None, ddim=None, decim=None, dspfvs=None, grpdly=None):
+    def __init__(self, data_dir='.', ser_file = 'ser', points=None, dim_status=None, decim=None, dspfvs=None, grpdly=None):
 
-        my_file = Path(dataDir+"/acqus")
+        my_file = Path(data_dir+"/acqus")
         if my_file.is_file():
-            acqusfile = open(dataDir+"/acqus", "r")
+            acqusfile = open(data_dir+"/acqus", "r")
             for line in acqusfile:
                 if "##$TD=" in line: 
                     (name, value) = line.split()
@@ -340,9 +340,9 @@ class LINData:
             acqusfile.close()
             p1 = None ; p2 = None
                
-        my_file = Path(dataDir+"/acqu2s")
+        my_file = Path(data_dir+"/acqu2s")
         if my_file.is_file():
-            acqusfile = open(dataDir+"/acqu2s", "r")
+            acqusfile = open(data_dir+"/acqu2s", "r")
             for line in acqusfile:
                 if "##$TD=" in line: 
                     (name, value) = line.split()
@@ -350,9 +350,9 @@ class LINData:
             acqusfile.close()
             p2 = None
             
-        my_file = Path(dataDir+"/acqu3s")
+        my_file = Path(data_dir+"/acqu3s")
         if my_file.is_file():
-            acqusfile = open(dataDir+"/acqu3s", "r")
+            acqusfile = open(data_dir+"/acqu3s", "r")
             for line in acqusfile:
                 if "##$TD=" in line: 
                     (name, value) = line.split()
@@ -375,48 +375,44 @@ class LINData:
             if 'grp' in locals():
                 grpdly = grp
             else:
-                grpdly = self.dd2g(dspfvs,decim)
-            
-            
+                grpdly = dd2g(dspfvs, decim)
+
         print('Complex Points structure is: '+str(points))
         print('DECIM= '+str(decim)+' DSPFVS= '+str(dspfvs)+' GRPDLY= '+str(grpdly))
-        #we need ot know the number of dimensions
-        self.ndim = len(points)
+        # we need ot know the number of dimensions
+        self.num_dim = len(points)
         
-        if ddim == None:
-            self.ddim = ['t', 't', 't'] # ddim = domain of dimension. We assume when loaded we have 
-                                       # time domain data. Unless specified otherwise
+        if dim_status is None:
+            self.dim_status = ['t', 't', 't']  # dim status: is data in f or t domain. We assume all t at first
         else:
-            self.ddim = ddim
+            self.dim_status = dim_status
         
-        if ddim:
-            if len(ddim) != len(points):
-                raise ValueError("insanity: number of dimensions in 'points' and 'ddim' don't match")
+        if dim_status:
+            if len(dim_status) != len(points):
+                raise ValueError("insanity: number of dimensions in 'points' and 'dim_status' don't match")
             else:
-                for i in range(len(ddim)):
-                    if ddim[i] != 't' and ddim[i] != 'f':
-                        print(ddim[i])
+                for i in range(len(dim_status)):
+                    if dim_status[i] != 't' and dim_status[i] != 'f':
+                        print(dim_status[i])
                         raise ValueError("dimension domains must be 'f' - frequency or 't' - time")
-            
-        #self.ddim = ddim
             
         # lets store the points
         self.points = points
         
         # typical bruker files are 4 bytes per data point
         # so keep in mind that file size is 4 * datasize
-        numdatapoints = 1
+        num_data_points = 1
         for p in points:
-            numdatapoints *= p*2 # times 2 because we assume complex data
-        self.datasize = numdatapoints
+            num_data_points *= p*2 # times 2 because we assume complex data
+        self.data_size = num_data_points
         
         # now lets load in the bruker serial file
-        with open(dataDir+'/'+serFile, 'rb') as serialfile:
-            self.lindata = np.frombuffer(serialfile.read(), dtype='>i4')
+        with open(data_dir+'/'+ser_file, 'rb') as serial_file:
+            self.linear_data = np.frombuffer(serial_file.read(), dtype='>i4')
     
         # now reshape the data
-        pointsnp = np.asarray(points)
-        self.lindata = np.reshape(self.lindata, (pointsnp)*2, order='F')
+        points_np = np.asarray(points)
+        self.linear_data = np.reshape(self.linear_data, points_np*2, order='F')
         
         # TODO - set up some sort of sanity test
         # if len(self.lindata) == self.datasize:
@@ -427,127 +423,46 @@ class LINData:
         # lets convert the data (only bruker right now)
         if decim and dspfvs:
             if grpdly:
-                self.convertBruker(grpdly)
+                self.convert_bruker(grpdly)
             else:
-                grpdly = self.dd2g(dspfvs,decim)
-                self.convertBruker(grpdly)
+                grpdly = dd2g(dspfvs, decim)
+                self.convert_bruker(grpdly)
             
         elif grpdly and not decim and not dspfvs:
-            self.convertBruker(grpdly)
+            self.convert_bruker(grpdly)
             
         else:
             print("Could not convert from Bruker data, incorrect or not found grpdly, dspfvs and/or decim")
- 
-    def dd2g(self, dspfvs, decim):
-        dspDic = {
-                10: {
-                    2: 44.75,
-                    3: 33.5,
-                    4: 66.625,
-                    6: 59.083333333333333,
-                    8: 68.5625,
-                    12: 60.375,
-                    16: 69.53125,
-                    24: 61.020833333333333,
-                    32: 70.015625,
-                    48: 61.34375,
-                    64: 70.2578125,
-                    96: 61.505208333333333,
-                    128: 70.37890625,
-                    192: 61.5859375,
-                    256: 70.439453125,
-                    384: 61.626302083333333,
-                    512: 70.4697265625,
-                    768: 61.646484375,
-                    1024: 70.48486328125,
-                    1536: 61.656575520833333,
-                    2048: 70.492431640625,
-                    },
-                11: {
-                    2: 46.,
-                    3: 36.5,
-                    4: 48.,
-                    6: 50.166666666666667,
-                    8: 53.25,
-                    12: 69.5,
-                    16: 72.25,
-                    24: 70.166666666666667,
-                    32: 72.75,
-                    48: 70.5,
-                    64: 73.,
-                    96: 70.666666666666667,
-                    128: 72.5,
-                    192: 71.333333333333333,
-                    256: 72.25,
-                    384: 71.666666666666667,
-                    512: 72.125,
-                    768: 71.833333333333333,
-                    1024: 72.0625,
-                    1536: 71.916666666666667,
-                    2048: 72.03125
-                    },
-                12: {
-                    2: 46.,
-                    3: 36.5,
-                    4: 48.,
-                    6: 50.166666666666667,
-                    8: 53.25,
-                    12: 69.5,
-                    16: 71.625,
-                    24: 70.166666666666667,
-                    32: 72.125,
-                    48: 70.5,
-                    64: 72.375,
-                    96: 70.666666666666667,
-                    128: 72.5,
-                    192: 71.333333333333333,
-                    256: 72.25,
-                    384: 71.666666666666667,
-                    512: 72.125,
-                    768: 71.833333333333333,
-                    1024: 72.0625,
-                    1536: 71.916666666666667,
-                    2048: 72.03125
-                    },
-                13: {
-                    2: 2.75,
-                    3: 2.8333333333333333,
-                    4: 2.875,
-                    6: 2.9166666666666667,
-                    8: 2.9375,
-                    12: 2.9583333333333333,
-                    16: 2.96875,
-                    24: 2.9791666666666667,
-                    32: 2.984375,
-                    48: 2.9895833333333333,
-                    64: 2.9921875,
-                    96: 2.9947916666666667
-                    }
-                }
 
-        return dspDic[dspfvs][decim]
-        
-        
-    def convertBruker(self,
-                 grpdly
-                ):
+    def convert_bruker(self, grpdly):
+
         # edit the number of points in first dimension after Bruker filter removal
-        self.points[0] = len(remove_bruker_filter(make_complex(self.lindata[:, 0, 0]), grpdly))
+        self.points[0] = len(remove_bruker_filter(make_complex(self.linear_data[:, 0, 0]), grpdly))
+
         # zero fill in a 3D matrix with complex zeros
         self.spectrum = np.zeros((self.points[0], self.points[1], self.points[2]), dtype='complex128')
+
         # load the data
         for ii in range(self.points[2]): # outer loop for third dimension points from dataFID
             for i in range(self.points[1]): # inner loop for second dimension points from dataFID
-                fid = remove_bruker_filter(make_complex(self.lindata[:,i,ii]), grpdly)
+                fid = remove_bruker_filter(make_complex(self.linear_data[:, i, ii]), grpdly)
                 # fid = np.pad(fid, (0,self.procsize[0]-len(fid)), 'constant', constant_values=(0.+0.j))
-                self.spectrum[0:len(fid),i,ii] = fid
+                self.spectrum[0:len(fid), i, ii] = fid
         
-        self.points[0] = len(fid) # set this so window function in direct dimension is correct after bruker filter
-        self.procsize = self.points
+        self.points[0] = len(fid)  # set this so window function in direct dimension is correct after bruker filter
+        self.process_size = self.points
+
+
+class LINProc:
+
+    def __init__(self, data):
+
+        self.data = data  # this should be of type LINData
+        self.zf = [0, 0, 0]
+
+    def zeroFill(self, zf=(1, 1, 1)):
         
-    def zeroFill(self, zf=[1, 1, 1]):
-        
-        self.zf = zf
+        self.zf = list(zf)
         
         # default zero filling of matrix to these sizes (next Fourier number)
         self.procsize = (2**(next_fourier_number(self.points[0])+zf[0]), 
