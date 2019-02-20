@@ -316,7 +316,9 @@ class NUSData:
 
 class LINData:
 
-    def __init__(self, data_dir='.', ser_file = 'ser', points=None, dim_status=None, decim=None, dspfvs=None, grpdly=None):
+    def __init__(self, data_dir='.', ser_file='ser', points=None,
+                 dim_status=None, decim=None, dspfvs=None, grpdly=None,
+                 ):
 
         my_file = Path(data_dir+"/acqus")
         if my_file.is_file():
@@ -398,7 +400,9 @@ class LINData:
             
         # lets store the points
         self.points = points
-        
+
+        self.process_size = self.points
+
         # typical bruker files are 4 bytes per data point
         # so keep in mind that file size is 4 * datasize
         num_data_points = 1
@@ -408,18 +412,19 @@ class LINData:
         
         # now lets load in the bruker serial file
         with open(data_dir+'/'+ser_file, 'rb') as serial_file:
-            self.linear_data = np.frombuffer(serial_file.read(), dtype='>i4')
+            self.raw_data = np.frombuffer(serial_file.read(), dtype='<i4')
     
         # now reshape the data
         points_np = np.asarray(points)
-        self.linear_data = np.reshape(self.linear_data, points_np*2, order='F')
+        self.raw_data = np.reshape(self.raw_data, points_np*2, order='F')
         
         # TODO - set up some sort of sanity test
         # if len(self.lindata) == self.datasize:
         #    self.sane = True
         # else:
         #    self.sane = False
-        
+        self.converted_data = np.zeros((self.points[0], self.points[1], self.points[2]), dtype='complex128')
+
         # lets convert the data (only bruker right now)
         if decim and dspfvs:
             if grpdly:
@@ -437,90 +442,60 @@ class LINData:
     def convert_bruker(self, grpdly):
 
         # edit the number of points in first dimension after Bruker filter removal
-        self.points[0] = len(remove_bruker_filter(make_complex(self.linear_data[:, 0, 0]), grpdly))
+        self.points[0] = len(remove_bruker_filter(make_complex(self.raw_data[:, 0, 0]), grpdly))
 
         # zero fill in a 3D matrix with complex zeros
-        self.spectrum = np.zeros((self.points[0], self.points[1], self.points[2]), dtype='complex128')
 
         # load the data
         for ii in range(self.points[2]): # outer loop for third dimension points from dataFID
             for i in range(self.points[1]): # inner loop for second dimension points from dataFID
-                fid = remove_bruker_filter(make_complex(self.linear_data[:, i, ii]), grpdly)
-                # fid = np.pad(fid, (0,self.procsize[0]-len(fid)), 'constant', constant_values=(0.+0.j))
-                self.spectrum[0:len(fid), i, ii] = fid
+                fid = remove_bruker_filter(make_complex(self.raw_data[:, i, ii]), grpdly)
+                self.converted_data[0:len(fid), i, ii] = fid
         
         self.points[0] = len(fid)  # set this so window function in direct dimension is correct after bruker filter
         self.process_size = self.points
+        self.converted_data = self.converted_data[
+                              0:self.points[0],
+                              0:self.points[1],
+                              0:self.points[2],
+                              ]
 
 
 class LINProc:
 
-    def __init__(self, data):
+    def __init__(self,
+                 data,  # this should be of type LINData
+                 zero_fills=(0, 0, 0),
+                 windows=(0.5, 0.5, 0.5),
+                 fp_corrections=(1.0, 0.5, 0.5),
+                 phases=(0, 0, 0),
+                 tf=('f', 'f', 'f'),  # the state we want finally
+                 ):
 
-        self.data = data  # this should be of type LINData
-        self.zf = [0, 0, 0]
+        self.data = data
 
-    def zeroFill(self, zf=(1, 1, 1)):
-        
-        self.zf = list(zf)
-        
-        # default zero filling of matrix to these sizes (next Fourier number)
-        self.procsize = (2**(next_fourier_number(self.points[0])+zf[0]), 
-            2**(next_fourier_number(self.points[1])+zf[1]), 
-            2**(next_fourier_number(self.points[2])+zf[2]))
-        
-    def window(self, wp=[0.5, 0.5, 0.5]):
-        self.wp = wp
-        # at some point will allow more than just shifted sine bell
-        
-    def fpcorrection(self, c = [1.0, 1.0, 1.0]):
-        self.c = c
-        
-    def phase(self, ph = [0, 0, 0]):
-        self.ph = ph
-        
-    def transform(self, tf = ['f', 'f', 'f']):
+        self.zero_fills = list(zero_fills)
+
+        self.ft_size = (2 ** (next_fourier_number(data.points[0]) + self.zero_fills[0]),
+                        2 ** (next_fourier_number(data.points[1]) + self.zero_fills[1]),
+                        2 ** (next_fourier_number(data.points[2]) + self.zero_fills[2]),
+                        )
+
+        self.windows = list(windows)
+
+        self.fp_corrections = list(fp_corrections)
+
+        self.phases = phases
+
         self.tf = tf
     
     def process3D(self,
-                  zf=None,
-                  wp=None,
-                  c=None,
-                  ph=None,
-                  tf=None
+                  zf=self.zero_fills,
+                  wp=self.windows,
+                  c=self.fp_corrections,
+                  ph=self.phases,
+                  tf=self.tf
                  ):
-        
-        if zf:
-            self.zf = zf
-            self.zeroFill(zf=zf)
-            
-        if wp:
-            self.wp = wp
-           
-        if c:
-            self.c = c
-            
-        if ph:
-            self.ph = ph
-            
-        if tf:
-            self.tf = tf
-        
-        # if some things aren't set, lets force defaults
-        if not hasattr(self, 'wp'):
-            self.wp = [0.5, 0.5, 0.5]
-        
-        if not hasattr(self, 'c'):
-            self.c = [1.0, 1.0, 1.0]
-            
-        if not hasattr(self, 'ph'):
-            self.ph = [0, 0, 0]
-           
-        if not hasattr(self, 'tf'):
-            self.tf=['f', 'f', 'f']
-            
-        if not hasattr(self, 'zf'):
-            self.zeroFill()
         
         # direct dimension phasing
         phcorr = np.exp(1.j*(self.ph[0]/180)*np.pi)
@@ -556,7 +531,7 @@ class LINProc:
                     
         
         # transpose data f3t2t1 -> t2f3t1
-        self.spectrum = self.spectrum.transpose(1,0,2)
+        self.spectrum = self.spectrum.transpose(1, 0, 2)
         # phase t2
         phcorr = np.exp(1.j*(self.ph[1]/180)*np.pi)
         
