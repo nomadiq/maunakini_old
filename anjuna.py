@@ -452,19 +452,19 @@ class LINData:
                 fid = remove_bruker_filter(make_complex(self.raw_data[:, i, ii]), grpdly)
                 self.converted_data[0:len(fid), i, ii] = fid
         
-        self.points[0] = len(fid)  # set this so window function in direct dimension is correct after bruker filter
         self.process_size = self.points
         self.converted_data = self.converted_data[
                               0:self.points[0],
                               0:self.points[1],
                               0:self.points[2],
                               ]
+        self.raw_data = self.converted_data  # clean up memory a little
 
 
 class LINProc:
 
     def __init__(self,
-                 data,  # this should be of type LINData
+                 lin_data,  # this should be of type LINData
                  zero_fills=(0, 0, 0),
                  windows=(0.5, 0.5, 0.5),
                  fp_corrections=(1.0, 0.5, 0.5),
@@ -472,121 +472,130 @@ class LINProc:
                  tf=('f', 'f', 'f'),  # the state we want finally
                  ):
 
-        self.data = data
-
+        self.windows = list(windows)
+        self.fp_corrections = list(fp_corrections)
+        self.phases = list(phases)
+        self.tf = list(tf)
+        self.LIN_data = lin_data
         self.zero_fills = list(zero_fills)
 
-        self.ft_size = (2 ** (next_fourier_number(data.points[0]) + self.zero_fills[0]),
-                        2 ** (next_fourier_number(data.points[1]) + self.zero_fills[1]),
-                        2 ** (next_fourier_number(data.points[2]) + self.zero_fills[2]),
-                        )
+        # final spectrum size will be this size - includes the zero fills
+        self.ft_points = [2 ** (next_fourier_number(lin_data.points[0]) + self.zero_fills[0]),
+                        2 ** (next_fourier_number(lin_data.points[1]) + self.zero_fills[1]),
+                        2 ** (next_fourier_number(lin_data.points[2]) + self.zero_fills[2]),
+                        ]
 
-        self.windows = list(windows)
+        self.spectrum = np.zeros((self.ft_points[0],
+                                  self.ft_points[1],
+                                  self.ft_points[2]),
+                                 dtype='complex128')
 
-        self.fp_corrections = list(fp_corrections)
-
-        self.phases = phases
-
-        self.tf = tf
+        # unprocessed data is this size
+        self.data_points = self.LIN_data.converted_data.shape
     
-    def process3D(self,
-                  zf=self.zero_fills,
-                  wp=self.windows,
-                  c=self.fp_corrections,
-                  ph=self.phases,
-                  tf=self.tf
-                 ):
+    def process3d(self):
         
         # direct dimension phasing
-        phcorr = np.exp(1.j*(self.ph[0]/180)*np.pi)
+        phase_correction = [
+            np.exp(1.j * (self.phases[0] / 180) * np.pi),
+            np.exp(1.j * (self.phases[1] / 180) * np.pi),
+            np.exp(1.j * (self.phases[2] / 180) * np.pi),
+        ]
         
         # decide to transform or not
-        if self.tf[0] == 'f' and self.ddim[0] == 't':
+        if self.tf[0] == 'f' and self.LIN_data.dim_status[0] == 't':
+
             # set the dimension state
-            self.ddim[0] = 'f'
-            # zero fill
-            zfspectrum = np.zeros((self.procsize[0], self.spectrum.shape[1], self.spectrum.shape[2]), dtype='complex128')
-            zfspectrum[0:self.spectrum.shape[0], 0:self.spectrum.shape[1], 0:self.spectrum.shape[2]] += self.spectrum[0:self.spectrum.shape[0], 0:self.spectrum.shape[1], 0:self.spectrum.shape[2]]
-            self.spectrum = zfspectrum
+            self.LIN_data.dim_status[0] = 'f'
+
+            # create a zeroed spectrum with zero fill
+            zf_spectrum = self.spectrum
+
+            # add the LINData spectrum to zf_spectrum but only to the size of LINData
+            # the rest of zf_spectrum stays as zeros. i.e. zero filled!
+            zf_spectrum[0:self.data_points[0],
+                        0:self.data_points[1],
+                        0:self.data_points[2],
+                        ] += self.LIN_data.converted_data
+
+            self.spectrum = zf_spectrum
+
+            window = np.sin((
+                        self.windows[0]*math.pi +
+                        (0.99-self.windows[0]) *
+                        math.pi*np.arange(self.data_points[0]) /
+                        self.data_points[0]))
+
             # fourier transform the direct dimension - we assume its simple DQD
-            for ii in range(self.points[2]): # outer loop for third dimension points from dataFID
-                for i in range(self.points[1]): # inner loop for second dimension points from dataFID
-                    fid = self.spectrum[:,i,ii]
-                    fid[0] = fid[0] * self.c[0] # first point correction
-                    fid[0:self.points[0]] = fid[0:self.points[0]] * np.sin(( #window function
-                        self.wp[0]*math.pi + (0.99-self.wp[0])*math.pi*np.arange(self.points[0])/self.points[0]))
-                    fid = np.pad(fid, (0,self.procsize[0]-len(fid)), 'constant', constant_values=(0.+0.j))
-                    self.spectrum[:,i,ii] = np.fft.fftshift(np.fft.fft(fid)*phcorr)[::-1]
-        
-        elif self.tf[0] == 't' and self.ddim[0] == 't':
-            pass
-            #for ii in range(self.points[2]*2): # outer loop for third dimension points from dataFID
-            #    for i in range(self.points[1]*2): # inner loop for second dimension points from dataFID
-            #        fid = self.spectrum[:,i,ii]
-            #        fid = np.pad(fid, (0,self.procsize[0]-len(fid)), 'constant', constant_values=(0.+0.j))
-            #        self.spectrum[:,i,ii] = fid*phcorr
-        
-            
-            
-                    
-        
+            # note, we loop to data_points, not length of zf_spectrum (self.spectrum).
+            # So we don't do FT on lines of zeroes.
+            for ii in range(self.data_points[2]):  # outer loop for third dimension points from dataFID
+                for i in range(self.data_points[1]):  # inner loop for second dimension points from dataFID
+
+                    # grab the fid we need
+                    fid = self.spectrum[:, i, ii]
+
+                    # first point correction
+                    fid[0] = fid[0] * self.fp_corrections[0]
+
+                    # window function
+                    fid[0:self.data_points[0]] = fid[0:self.data_points[0]] * window
+
+                    self.spectrum[:, i, ii] = np.fft.fftshift(np.fft.fft(fid)*phase_correction[0])[::-1]
+
+            self.data_points[0] = self.spectrum.shape[0]
+
         # transpose data f3t2t1 -> t2f3t1
         self.spectrum = self.spectrum.transpose(1, 0, 2)
-        # phase t2
-        phcorr = np.exp(1.j*(self.ph[1]/180)*np.pi)
-        
+
         # t2f3t1 -> f2f3t1 - this transform uses hypercomplex processing
-        if self.tf[1] == 'f' and self.ddim[1] == 't':
+        if self.tf[1] == 'f' and self.LIN_data.dim_status[1] == 't':
             # set the dimension state
-            self.ddim[1] = 'f'
-            # zero fill
-            zfspectrum = np.zeros((self.procsize[1], self.spectrum.shape[1], self.spectrum.shape[2]), dtype='complex128')
-            zfspectrum[0:self.spectrum.shape[0], 0:self.spectrum.shape[1], 0:self.spectrum.shape[2]] += self.spectrum[0:self.spectrum.shape[0], 0:self.spectrum.shape[1], 0:self.spectrum.shape[2]]
-            self.spectrum = zfspectrum
+            self.LIN_data.dim_status[1] = 'f'
+
+            window = np.sin((
+                    self.windows[1] * math.pi +
+                    (0.99 - self.windows[1]) *
+                    math.pi * np.arange(self.data_points[1]) /
+                    self.data_points[1]))
             
-            for ii in range(self.spectrum.shape[2]): 
-                for i in range(self.spectrum.shape[1]):
-                    real = np.real(self.spectrum[::2,i,ii])
-                    imag = np.real(self.spectrum[1::2,i,ii])
-                    inter = np.ravel((real,imag), order='F')
+            for ii in range(self.data_points[2]):
+                for i in range(self.data_points[0]):
+                    real = np.real(self.spectrum[::2, i, ii])
+                    imag = np.real(self.spectrum[1::2, i, ii])
+                    inter = np.ravel((real, imag), order='F')
                     fid = make_complex(inter)
-                    fid[0] = fid[0] * self.c[1] # first point correction
-                    #window function
-                    fid = fid[0:self.points[1]] * np.sin((self.wp[1]*math.pi + (0.99-self.wp[1])*
-                        math.pi*np.arange(self.points[1])/self.points[1]))
-                    # because this throughts out half the data we need to pad it to 
-                    # make it the same length as it was
-                    fid = np.pad(fid, (0,self.procsize[1]-len(fid)), 'constant', constant_values=(0.+0.j))
-                    self.spectrum[:,i,ii] = np.fft.fft(fid)*phcorr
+                    fid[0] = fid[0] * self.fp_corrections[1]  # first point correction
+                    # window function
+                    fid[0:self.data_points[1]] = fid[0:self.data_points[1]] * window
+
+                    self.spectrum[:, i, ii] = np.fft.fftshift(np.fft.fft(fid)*phase_correction[1])[::-1]
 
         # f2f3t1 -> t1f3f2
         self.spectrum = self.spectrum.transpose(2, 1, 0)
-        # indirect dimension phasing
-        phcorr = np.exp(1.j*(self.ph[2]/180)*np.pi)
 
         # t1f3f2 -> f3f1f2 - this transform uses hypercomplex processing
-        if self.tf[2] == 'f' and self.ddim[2] == 't':
+        if self.tf[2] == 'f' and self.LIN_data.dim_status[2] == 't':
             # set the dimension state
-            self.ddim[2] = 'f'
-            # zero fill
-            zfspectrum = np.zeros((self.procsize[2], self.spectrum.shape[1], self.spectrum.shape[2]), dtype='complex128')
-            zfspectrum[0:self.spectrum.shape[0], 0:self.spectrum.shape[1], 0:self.spectrum.shape[2]] += self.spectrum[0:self.spectrum.shape[0], 0:self.spectrum.shape[1], 0:self.spectrum.shape[2]]
-            self.spectrum = zfspectrum
+            self.LIN_data.dim_status[2] = 'f'
+
+            window = np.sin((
+                    self.windows[2] * math.pi +
+                    (0.99 - self.windows[2]) *
+                    math.pi * np.arange(self.data_points[2]) /
+                    self.data_points[2]))
             
-            for ii in range(self.spectrum.shape[2]): 
-                for i in range(self.spectrum.shape[1]):
-                    real = np.real(self.spectrum[::2,i,ii])
-                    imag = np.real(self.spectrum[1::2,i,ii])
+            for ii in range(self.data_points[0]):
+                for i in range(self.data_points[1]):
+                    real = np.real(self.spectrum[::2, i, ii])
+                    imag = np.real(self.spectrum[1::2, i, ii])
                     inter = np.ravel((real,imag), order='F')
                     fid = make_complex(inter)
-                    fid[0] = fid[0] * self.c[2]  # first point correction
+                    fid[0] = fid[0] * self.fp_corrections[2]  # first point correction
                     # window function
-                    fid = fid[0:self.points[2]] * np.sin((self.wp[2]*math.pi + (0.99-self.wp[2])*
-                        math.pi*np.arange(self.points[2])/self.points[2]))
-                    # because this throws out half the data we need to pad it to
-                    # make it the same length as it was
-                    fid = np.pad(fid, (0,self.procsize[2]-len(fid)), 'constant', constant_values=(0.+0.j))
-                    self.spectrum[:,i,ii] = np.fft.fft(fid)*phcorr
+                    fid[0:self.data_points[2]] = fid[0:self.data_points[2]] * window
+
+                    self.spectrum[:, i, ii] = np.fft.fftshift(np.fft.fft(fid)*phase_correction[2])[::-1]
 
         # return spectrum to original ordering
         self.spectrum = self.spectrum.transpose(1, 2, 0)
