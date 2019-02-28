@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm
 import math
 from pathlib import Path
+import os.path
 
 # ------------------------------------- #
 #              Functions                #
@@ -31,49 +32,6 @@ def remove_bruker_filter(data, grpdly):
     data = data[..., :-skip]
 
     return data
-
-
-def plot_2d_spectrum(spectrum, noise, sign=None):
-    
-    cmap = matplotlib.cm.Reds_r   # contour map (colors to use for contours)
-    contour_start = noise     # contour level start value
-    contour_num = 10        # number of contour levels
-    contour_factor = 1.40      # scaling factor between contour levels
-
-    # calculate contour levels
-    cl = contour_start * contour_factor ** np.arange(contour_num)
-    fig = plt.figure(figsize=(10, 6))
-    ax = fig.add_subplot(111)
-
-    # plot the contours
-    ax.contour(spectrum,
-               cl,
-               cmap=cmap,
-               extent=(0, spectrum.shape[1] - 1, 0, spectrum.shape[0] - 1),
-               linewidths=1)
-
-    if sign=='PosNeg':
-        cl = -1*contour_start * contour_factor ** np.arange(contour_num)
-        cmap = matplotlib.cm.Greens
-        ax.contour(spectrum, cl[::-1],
-                   cmap=cmap,
-                   extent=(0, spectrum.shape[1] - 1, 0, spectrum.shape[0] - 1),
-                   linewidths=1,
-                   )
-    
-    plt.show()
-
-
-def plot_2d_nuslist(nuslist):
-
-    x = []
-    y = []
-
-    for samp in nuslist:
-        x.append(samp[0])
-        y.append(samp[1])
-
-    plt.scatter(x, y)
 
 
 def dd2g(dspfvs, decim):
@@ -465,7 +423,7 @@ class LINProc:
 
     def __init__(self,
                  lin_data,  # this should be of type LINData
-                 zero_fills=(0, 0, 0),
+                 zero_fills=(1, 1, 1),  # this just means to next Fourier number - no real zero fill
                  windows=(0.5, 0.5, 0.5),
                  fp_corrections=(1.0, 0.5, 0.5),
                  phases=(0, 0, 0),
@@ -481,9 +439,9 @@ class LINProc:
 
         # final spectrum size will be this size - includes the zero fills
         self.ft_points = [2 ** (next_fourier_number(lin_data.points[0]) + self.zero_fills[0]),
-                        2 ** (next_fourier_number(lin_data.points[1]) + self.zero_fills[1]),
-                        2 ** (next_fourier_number(lin_data.points[2]) + self.zero_fills[2]),
-                        ]
+                          2 ** (next_fourier_number(lin_data.points[1]) + self.zero_fills[1]),
+                          2 ** (next_fourier_number(lin_data.points[2]) + self.zero_fills[2]),
+                          ]
 
         self.spectrum = np.zeros((self.ft_points[0],
                                   self.ft_points[1],
@@ -491,7 +449,7 @@ class LINProc:
                                  dtype='complex128')
 
         # unprocessed data is this size
-        self.data_points = self.LIN_data.converted_data.shape
+        self.data_points = list(self.LIN_data.converted_data.shape)
     
     def process3d(self):
         
@@ -558,18 +516,21 @@ class LINProc:
                     (0.99 - self.windows[1]) *
                     math.pi * np.arange(self.data_points[1]) /
                     self.data_points[1]))
-            
+            print(self.data_points[1])
+            print(self.spectrum.shape)
             for ii in range(self.data_points[2]):
                 for i in range(self.data_points[0]):
                     real = np.real(self.spectrum[::2, i, ii])
                     imag = np.real(self.spectrum[1::2, i, ii])
                     inter = np.ravel((real, imag), order='F')
                     fid = make_complex(inter)
+                    #print(len(fid), len(real))
                     fid[0] = fid[0] * self.fp_corrections[1]  # first point correction
                     # window function
                     fid[0:self.data_points[1]] = fid[0:self.data_points[1]] * window
 
-                    self.spectrum[:, i, ii] = np.fft.fftshift(np.fft.fft(fid)*phase_correction[1])[::-1]
+                    self.spectrum[0:len(fid), i, ii] = \
+                        np.fft.fftshift(np.fft.fft(fid)*phase_correction[1])[::-1]
 
         # f2f3t1 -> t1f3f2
         self.spectrum = self.spectrum.transpose(2, 1, 0)
@@ -584,18 +545,284 @@ class LINProc:
                     (0.99 - self.windows[2]) *
                     math.pi * np.arange(self.data_points[2]) /
                     self.data_points[2]))
-            
-            for ii in range(self.data_points[0]):
-                for i in range(self.data_points[1]):
+            for ii in range(self.data_points[1]):
+                for i in range(self.data_points[0]):
                     real = np.real(self.spectrum[::2, i, ii])
                     imag = np.real(self.spectrum[1::2, i, ii])
-                    inter = np.ravel((real,imag), order='F')
+                    inter = np.ravel((real, imag), order='F')
                     fid = make_complex(inter)
                     fid[0] = fid[0] * self.fp_corrections[2]  # first point correction
                     # window function
                     fid[0:self.data_points[2]] = fid[0:self.data_points[2]] * window
 
-                    self.spectrum[:, i, ii] = np.fft.fftshift(np.fft.fft(fid)*phase_correction[2])[::-1]
+                    self.spectrum[0:len(fid), i, ii] = np.fft.fftshift(np.fft.fft(fid)*phase_correction[2])[::-1]
 
         # return spectrum to original ordering
         self.spectrum = self.spectrum.transpose(1, 2, 0)
+
+
+class LINData2D:
+
+    def __init__(self, data_dir='.', ser_file='ser', points=None,
+                 dim_status=None, decim=None, dspfvs=None, grpdly=None,
+                 ):
+
+        self.ac1 = os.path.join(data_dir, 'acqus')
+        self.ac2 = os.path.join(data_dir, 'acqu2s')
+        self.ser = os.path.join(data_dir, 'ser')
+        self.pp = os.path.join(data_dir, 'pulseprogram')
+        self.ser = os.path.join(data_dir, ser_file)
+        self.dir = data_dir
+        self.acq = [0, 0]  # acquisition modes start as undefined
+
+        # dictionary of acquisition modes for Bruker
+        self.acqDict = {0: 'undefined',
+                        1: 'qf',
+                        2: 'qsec',
+                        3: 'tppi',
+                        4: 'states',
+                        5: 'states-tppi',
+                        6: 'echo-antiecho',
+                        }
+
+        # check if we are a Bruker 2D data set
+        if (os.path.isfile(self.ac1) and
+                os.path.isfile(self.ac2) and
+                os.path.isfile(self.ser) and
+                os.path.isfile(self.pp)):
+            self.valid = True
+
+        else:
+            self.valid = False
+            print('Data Directory does not seem to contain Bruker 2D Data')
+
+        p0 = p1 = 0  # we'll find these in the files
+        dec = dsp = grp = 0  # we'll find these in the files
+
+        acqusfile = open(self.ac1, "r")
+        for line in acqusfile:
+            if "##$TD=" in line:
+                (name, value) = line.split()
+                p0 = int(value)
+            if "##$DECIM=" in line:
+                (name, value) = line.split()
+                dec = int(value)
+            if "##$DSPFVS=" in line:
+                (name, value) = line.split()
+                dsp = int(value)
+            if "##$GRPDLY=" in line:
+                (name, value) = line.split()
+                grp = float(value)
+
+            self.acq[0] = 0  # doesnt matter we assume DQD for direct anyway
+
+        acqusfile.close()
+
+        acqusfile = open(self.ac2, "r")
+        for line in acqusfile:
+            if "##$TD=" in line:
+                (name, value) = line.split()
+                p1 = int(value)
+
+            if "##$FnMODE=" in line:
+                (name, value) = line.split()
+                self.acq[1] = int(value)
+
+        acqusfile.close()
+
+        if p0 and p1:
+            points = [p0, p1]
+        else:
+            print("problem with detecting number of points in data")
+            self.valid = False
+
+        if dec != 0:
+            decim = dec
+        if dsp != 0:
+            dspfvs = dsp
+        if grp:
+            grpdly = grp
+        elif dec != 0 and dsp != 0:
+            grpdly = dd2g(dspfvs, decim)
+        else:
+            print("problem with detecting / determining grpdly - needed for Bruker conversion")
+            self.valid = False
+
+        print('Data Points structure is: ' + str(points))
+        print('DECIM= ' + str(decim) + ' DSPFVS= ' + str(dspfvs) + ' GRPDLY= ' + str(grpdly))
+
+        if dim_status is None:
+            self.dim_status = ['t', 't']  # dim status: is data in f or t domain. We assume all t at first
+        else:
+            self.dim_status = dim_status
+
+        if dim_status:
+            if len(dim_status) != len(points):
+                raise ValueError("insanity: number of dimensions in 'points' and 'dim_status' don't match")
+            else:
+                for i in range(len(dim_status)):
+                    if dim_status[i] != 't' and dim_status[i] != 'f':
+                        print(dim_status[i])
+                        raise ValueError("dimension domains must be 'f' - frequency or 't' - time")
+
+        # lets store the points
+        self.points = points
+
+        # now lets load in the bruker serial file
+        with open(self.ser, 'rb') as serial_file:
+            self.raw_data = np.frombuffer(serial_file.read(), dtype='<i4')
+
+        # now reshape the data
+        self.raw_data = np.reshape(self.raw_data, np.asarray(self.points), order='F')
+
+        # TODO - set up some sort of sanity test
+        # if len(self.lindata) == self.datasize:
+        #    self.sane = True
+        # else:
+        #    self.sane = False
+
+        # converted data is going to be of complex numbers. So first dimension will at least be halved
+        # since is is acquired as DQD or points = R+I. So complex numbers = R = I. But indirect
+        # dimension is still a mix of the 2 experiments with 90 phase shift.
+        self.converted_data = np.zeros((int(self.points[0]/2), self.points[1]), dtype='complex128')
+
+        # lets convert the data
+        if decim and dspfvs:
+            if grpdly:
+                self.convert_bruker_2d(grpdly)
+            else:
+                grpdly = dd2g(dspfvs, decim)
+                self.convert_bruker_2d(grpdly)
+
+        elif grpdly and not decim and not dspfvs:
+            self.convert_bruker_2d(grpdly)
+
+        else:
+            print("Could not convert from Bruker data, incorrect or not found grpdly, dspfvs and/or decim")
+
+        print('Converted Data Points structure is:', self.points)
+
+        self.phases = (0, 0)
+        self.fp_corrections = (0.5, 0.5)
+        self.windows = ('sb', 'sb')
+        self.windows_p = (0.5, 0.5)
+        self.zero_fill = (1.0, 1.0)
+
+        self.processed_data = []  # this will be filled out in proc method
+        self.ft_points = []
+
+    def convert_bruker_2d(self, grpdly):
+
+        # edit the number of points in first dimension after Bruker filter removal
+        # we now count points in complex numbers as well
+        self.points[0] = len(remove_bruker_filter(make_complex(self.raw_data[:, 0]), grpdly))
+
+        # convert the data
+        for i in range(self.points[1]):  # inner loop for second dimension points from dataFID
+            fid = remove_bruker_filter(make_complex(self.raw_data[:, i]), grpdly)
+            self.converted_data[0:len(fid), i] = fid
+
+        self.converted_data = self.converted_data[
+                              0:self.points[0],
+                              0:self.points[1],
+                              ]
+
+        if self.acq[1] == 6:  # Rance Kay Processing needed
+            print('Echo-AntiEcho Detected in T1 - dealing with it...')
+            for i in range(0, self.points[1], 2):
+                a = self.converted_data[:, i]
+                b = self.converted_data[:, i+1]
+                c = a + b
+                d = a - b
+                self.converted_data[:, i] = c * np.exp(1.j * (90 / 180) * np.pi)
+                self.converted_data[:, i+1] = d * np.exp(1.j * (180 / 180) * np.pi)
+
+        self.raw_data = self.converted_data  # clean up memory a little
+
+    def proc_t2(self, phase=0, c=1.0, window='sb', window_p=0.5):
+
+        self.processed_data[0, :] = self.processed_data[0, :] * c
+
+        for i in range(self.ft_points[1]):
+            fid = self.processed_data[:, i]
+            fid = fid * self.window_function(points=len(fid),
+                                             window=window,
+                                             window_p=window_p,
+                                             )
+            self.processed_data[0:len(fid), i] = fid
+            self.processed_data[:, i] = np.fft.fftshift(
+                np.fft.fft(self.processed_data[:, i] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+
+    def proc_t1(self, phase=0, c=1.0, window='sb', window_p=0.5):
+
+        self.processed_data[:, 0] = self.processed_data[:, 0] * c
+        self.processed_data[:, 1] = self.processed_data[:, 1] * c
+
+        for i in range(self.ft_points[0]):
+            fid_r = np.real(self.processed_data[i, ::2])
+            fid_i = np.real(self.processed_data[i, 1::2])
+            fid = np.ravel((fid_r, fid_i), order='F')
+            fid = make_complex(fid)
+            fid = fid * self.window_function(points=len(fid),
+                                             window=window,
+                                             window_p=window_p
+                                             )
+
+            self.processed_data[i, 0:len(fid)] = fid
+            self.processed_data[i, len(fid):] = np.zeros(self.ft_points[1]-len(fid))
+
+            if self.acq[1] != 5 or self.acq[1] != 5:
+                self.processed_data[i, :] = np.fft.fftshift(
+                    np.fft.fft(self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+
+            elif self.acq[1] == 5 or self.acq[1] == 3:  # states tppi or tppi - don't fftshift
+                self.processed_data[i, :] = np.fft.fft(
+                    self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
+
+    def proc(self, phases=(0, 0),
+             fp_corrections=(0.5, 0.5),
+             windows=('sb', 'sb'),
+             windows_p=(0.5, 0.5),
+             zero_fill=(1.0, 1.0),
+             ):
+
+        t1_ac_mode = int(self.acq[1])
+        if t1_ac_mode >= 3 or t1_ac_mode <= 6:  # hypercomplex data. T1 points is really half
+            points_t2 = int(self.points[1] / 2)
+        else:
+            points_t2 = self.points[1]
+
+        self.ft_points = (int(2 ** (next_fourier_number(self.points[0]) + zero_fill[0])),
+                          int(2 ** (next_fourier_number(points_t2) + zero_fill[1])),
+                          )
+        print(self.ft_points)
+        self.processed_data = np.zeros(self.ft_points, dtype='complex128')
+
+        self.processed_data[0:self.points[0], 0:self.points[1]] = self.converted_data
+
+        self.proc_t2(phase=phases[0],
+                     c=fp_corrections[0],
+                     window=windows[0],
+                     window_p=windows_p[0],
+                     # ft_points=ft_points[0],
+                     )
+
+        self.proc_t1(phase=phases[1],
+                     c=fp_corrections[1],
+                     window=windows[1],
+                     window_p=windows_p[1],
+                     # ft_points=ft_points[1],
+                     )
+
+    @staticmethod
+    def window_function(points=0, window='sb', window_p=0.5):
+        if window == 'sb':
+            w = np.sin((
+                window_p * math.pi +
+                (0.99 - window_p) *
+                math.pi * np.arange(points) /
+                points))
+        else:
+            w = np.ones(points)
+
+        return w
