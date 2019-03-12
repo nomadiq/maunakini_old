@@ -19,14 +19,27 @@ def next_fourier_number(num):
     return math.ceil(math.log(num, 2))
 
 
+# def remove_bruker_filter(data, grpdly):
+#
+#     s = float(data.shape[-1])
+#     data = np.fft.fft(np.fft.ifftshift(data, -1), axis=-1).astype(data.dtype) / s
+#     data = data * np.exp(2.j * np.pi * grpdly * np.arange(s) / s).astype(data.dtype)
+#     data = np.fft.fftshift(np.fft.ifft(data, axis=-1).astype(data.dtype), -1) * s
+#     skip = int(np.floor(grpdly + 2.))
+#     add = int(max(skip - 6, 0))
+#     data[..., :add] = data[..., :add] + data[..., :-(add + 1):-1]
+#     data = data[..., :-skip]
+#
+#     return data
+
 def remove_bruker_filter(data, grpdly):
 
-    s = float(data.shape[-1])
-    data = np.fft.fft(np.fft.ifftshift(data, -1), axis=-1).astype(data.dtype) / s
-    data = data * np.exp(2.j * np.pi * grpdly * np.arange(s) / s).astype(data.dtype)
-    data = np.fft.fftshift(np.fft.ifft(data, axis=-1).astype(data.dtype), -1) * s
-    skip = int(np.floor(grpdly + 2.))    
-    add = int(max(skip - 6, 0))           
+    n = len(data)
+    data = np.fft.fft(np.fft.ifftshift(data)).astype(data.dtype) / n
+    data = data * np.exp(2.j * np.pi * grpdly * np.arange(n) / n)
+    data = np.fft.fftshift(np.fft.ifft(data)) * n
+    skip = int(np.floor(grpdly + 2.0))
+    add = int(max(skip - 6, 0))
     data[..., :add] = data[..., :add] + data[..., :-(add + 1):-1]
     data = data[..., :-skip]
 
@@ -609,7 +622,7 @@ class LINData3D:
                     c = a + b
                     d = a - b
                     self.converted_data[:, ii, i] = c * np.exp(1.j * (90 / 180) * np.pi)
-                    self.converted_data[:, i1, i+1] = d * np.exp(1.j * (180 / 180) * np.pi)
+                    self.converted_data[:, ii, i+1] = d * np.exp(1.j * (180 / 180) * np.pi)
 
         self.raw_data = self.converted_data  # clean up memory a little
 
