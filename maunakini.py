@@ -1,7 +1,8 @@
 import numpy as np
 import scipy.signal as signal
+from scipy.fftpack import fftshift, fft
 import math
-from pathlib import Path
+# from pathlib import Path
 import os.path
 
 # ------------------------------------- #
@@ -149,7 +150,37 @@ def dd2g(dspfvs, decim):
     return dspdic[dspfvs][decim]
 
 
-def window_function(points=0, window='sb', window_p=0.5):
+def dd2g(dspfvs, decim):
+
+    dspdic = {
+        10: {
+            2: 44.75, 3: 33.5, 4: 66.625, 6: 59.083333333333333, 8: 68.5625, 12: 60.375, 16: 69.53125,
+            24: 61.020833333333333, 32: 70.015625, 48: 61.34375, 64: 70.2578125, 96: 61.505208333333333,
+            128: 70.37890625, 192: 61.5859375, 256: 70.439453125, 384: 61.626302083333333, 512: 70.4697265625,
+            768: 61.646484375, 1024: 70.48486328125, 1536: 61.656575520833333, 2048: 70.492431640625,
+            },
+        11: {
+            2: 46.0, 3: 36.5, 4: 48.0, 6: 50.166666666666667, 8: 53.25, 12: 69.5, 16: 72.25, 24: 70.166666666666667,
+            32: 72.75, 48: 70.5, 64: 73.0, 96: 70.666666666666667, 128: 72.5, 192: 71.333333333333333, 256: 72.25,
+            384: 71.666666666666667, 512: 72.125, 768: 71.833333333333333, 1024: 72.0625, 1536: 71.916666666666667,
+            2048: 72.03125
+            },
+        12: {
+            2: 46.0, 3: 36.5, 4: 48.0, 6: 50.166666666666667, 8: 53.25, 12: 69.5, 16: 71.625, 24: 70.166666666666667,
+            32: 72.125, 48: 70.5, 64: 72.375, 96: 70.666666666666667, 128: 72.5, 192: 71.333333333333333, 256: 72.25,
+            384: 71.666666666666667, 512: 72.125, 768: 71.833333333333333, 1024: 72.0625, 1536: 71.916666666666667,
+            2048: 72.03125
+            },
+        13: {
+            2: 2.75, 3: 2.8333333333333333, 4: 2.875, 6: 2.9166666666666667, 8: 2.9375, 12: 2.9583333333333333,
+            16: 2.96875, 24: 2.9791666666666667, 32: 2.984375, 48: 2.9895833333333333, 64: 2.9921875,
+            96: 2.9947916666666667
+            }
+        }
+    return dspdic[dspfvs][decim]
+
+
+def window_function(points=0, window='sb', window_p=0.5) -> np.ndarray:
     if window == 'sb':
         w = np.sin((
             window_p * math.pi +
@@ -635,7 +666,7 @@ class LINData3D:
                                  )
         for i in range(self.ft_points[2]):
             for ii in range(self.ft_points[1]):
-                fid = self.processed_data[:, ii, i]
+                fid = self.processed_data[0:self.points[0], ii, i]
 
                 if t3_ss == 'poly':
                     co_ef = np.polynomial.polynomial.polyfit(np.arange(len(fid)),  fid,  5)
@@ -648,11 +679,12 @@ class LINData3D:
                     fid = fid - polyline
 
                 elif t3_ss == 'butter':
-                    fid = butter_highpass_filter(fid, 0.01, 0.05, order=1)
+                    fid = butter_highpass_filter(fid, 0.01, 0.1, order=1)
 
-                fid[0:len(window)] = fid[0:len(window)] * window
+                #fid[0:len(window)] = fid[0:len(window)] * window
+                fid = fid * window
 
-                self.processed_data[0:len(fid), ii, i] = fid
+                self.processed_data[0:self.points[0], ii, i] = fid
                 self.processed_data[:, ii, i] = np.fft.fftshift(
                     np.fft.fft(self.processed_data[:, ii, i] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
 
@@ -661,53 +693,50 @@ class LINData3D:
         self.processed_data[:, 0, :] = self.processed_data[:, 0, :] * c
         self.processed_data[:, 1, :] = self.processed_data[:, 1, :] * c
 
-        window = window_function(points=self.points[1]/2,
+        window = window_function(points=self.points[1]/2,  # hypercomplex so halve this
                                  window=window,
                                  window_p=window_p
                                  )
         for i in range(self.ft_points[2]):
             for ii in range(self.ft_points[0]):
-                fid_r = np.real(self.processed_data[ii, ::2, i])
-                fid_i = np.real(self.processed_data[ii, 1::2, i])
-                fid = np.ravel((fid_r, fid_i), order='F')
-                fid = make_complex(fid)
-                fid[0:int(self.points[1]/2)] = fid[0:int(self.points[1]/2)] * window
-
+                fid = np.real(self.processed_data[ii, :int(self.points[1]):2, i]) + \
+                  1.j*np.real(self.processed_data[ii, 1:int(self.points[1]):2, i])
+                # fid[0:int(self.points[1]/2)] = fid[0:int(self.points[1]/2)] * window
+                fid = fid * window
                 self.processed_data[ii, 0:len(fid), i] = fid
                 self.processed_data[ii, len(fid):, i] = np.zeros(self.ft_points[1]-len(fid))
 
-                if self.acq[1] != 5 or self.acq[1] != 5:
-                    self.processed_data[ii, :, i] = np.fft.fftshift(
-                        np.fft.fft(self.processed_data[ii, :, i] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+                if self.acq[1] != 5 and self.acq[1] != 3:
+                    self.processed_data[ii, :, i] = fftshift(
+                        fft(self.processed_data[ii, :, i] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
 
                 elif self.acq[1] == 5 or self.acq[1] == 3:  # states tppi or tppi - don't fftshift
-                    self.processed_data[ii, :, i] = np.fft.fft(
+                    self.processed_data[ii, :, i] = fft(
                         self.processed_data[ii, :, i] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
 
     def proc_t1(self, phase=0, c=1.0, window='sb', window_p=0.5):
 
         self.processed_data[:, :, 0] = self.processed_data[:, :, 0] * c
         self.processed_data[:, :, 1] = self.processed_data[:, :, 1] * c
-        window = window_function(points=self.points[2]/2,
+        window = window_function(points=self.points[2]/2,  # hypercomplex so halve this
                                  window=window,
                                  window_p=window_p
                                  )
         for i in range(self.ft_points[1]):
             for ii in range(self.ft_points[0]):
-                fid_r = np.real(self.processed_data[ii, i, ::2])
-                fid_i = np.real(self.processed_data[ii, i, 1::2])
-                fid = np.ravel((fid_r, fid_i), order='F')
-                fid = make_complex(fid)
-                fid[0:int(self.points[2] / 2)] = fid[0:int(self.points[2] / 2)] * window
+                fid = np.real(self.processed_data[ii, i, :int(self.points[2]):2]) + \
+                  1.j*np.real(self.processed_data[ii, i, 1:int(self.points[2]):2])
+                # fid[0:int(self.points[2] / 2)] = fid[0:int(self.points[2] / 2)] * window
+                fid = fid * window
                 self.processed_data[ii, i, 0:len(fid)] = fid
                 self.processed_data[ii, i, len(fid):] = np.zeros(self.ft_points[2]-len(fid))
 
                 if self.acq[2] == 5 or self.acq[2] == 3:
-                    self.processed_data[ii, i, :] = np.fft.fft(
+                    self.processed_data[ii, i, :] = fft(
                         self.processed_data[ii, i, :] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
 
                 else:  # states tppi or tppi - don't fftshift
-                    self.processed_data[ii, i, :] = np.fft.fftshift(np.fft.fft(
+                    self.processed_data[ii, i, :] = fftshift(fft(
                         self.processed_data[ii, i, :] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
 
     def proc(self, phases=(0, 0, 0),
