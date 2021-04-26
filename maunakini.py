@@ -339,25 +339,25 @@ class Bruker1D:
             with open(self.acqus, "r") as acqusfile:
                 for line in acqusfile:
                     if "##$TD=" in line:
-                        (name, value) = line.split()
+                        (_, value) = line.split()
                         td = int(value)
                     if "##$DECIM=" in line:
-                        (name, value) = line.split()
+                        (_, value) = line.split()
                         dec = int(value)
                     if "##$DSPFVS=" in line:
-                        (name, value) = line.split()
+                        (_, value) = line.split()
                         dsp = int(value)
                     if "##$GRPDLY=" in line:
-                        (name, value) = line.split()
+                        (_, value) = line.split()
                         grp = float(value)
                     if "##$BYTORDA=" in line:
-                        (name, value) = line.split()
+                        (_, value) = line.split()
                         self.byte_order = float(value)
                     if "##$AQ_mod=" in line:
-                        (name, value) = line.split()
+                        (_, value) = line.split()
                         self.aq_mod = get_aq_mod(int(value))
                     if "##$DTYPA=" in line:
-                        (name, value) = line.split()
+                        (_, value) = line.split()
                         self.dtypa = int(value)
 
 
@@ -395,16 +395,16 @@ class Bruker1D:
             procsfile = open(self.proc_dir+'/procs')
             for line in procsfile:
                 if "##$FTSIZE=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.proc_ft_size = int(value)
                 if "##$PHC0=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.proc_ph0 = float(value)
                 if "##$PHC1=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.proc_ph1 = float(value)
                 if "##$BYTORDP=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.proc_byte_order = float(value)
 
             self.bruker_proc_data = np.zeros(self.proc_ft_size, dtype='complex128')
@@ -496,8 +496,7 @@ class Bruker1D:
                 try:
                     imag = np.frombuffer(imag_proc.read(), dtype='<i4')
                 except:
-                    
-                    image = np.asarray([0])
+                    imag = np.asarray([0])
             elif self.proc_byte_order == 1:
                 try:
                     imag = np.frombuffer(imag_proc.read(), dtype='>i4')
@@ -567,20 +566,20 @@ class LINData2D:
         with open(self.ac1, "r") as acqusfile:
             for line in acqusfile:
                 if "##$TD=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     p0 = int(value)
                 if "##$DECIM=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     dec = int(value)
                 if "##$DSPFVS=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     dsp = int(value)
                 if "##$GRPDLY=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     grp = float(value)
 
                 if "##$BYTORDA=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.byte_order = float(value)
 
                 self.acq[0] = 0  # doesnt matter we assume DQD for direct anyway
@@ -588,11 +587,11 @@ class LINData2D:
         with open(self.ac2, "r") as acqusfile:
             for line in acqusfile:
                 if "##$TD=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     p1 = int(value)
 
                 if "##$FnMODE=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.acq[1] = int(value)
 
         if p0 and p1:
@@ -889,20 +888,20 @@ class LINData3D:
         with open(self.ac1, "r") as acqusfile:
             for line in acqusfile:
                 if "##$TD=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     p0 = int(value)
                 if "##$DECIM=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     dec = int(value)
                 if "##$DSPFVS=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     dsp = int(value)
                 if "##$GRPDLY=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     grp = float(value)
 
                 if "##$BYTORDA=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.byte_order = float(value)
 
                 self.acq[0] = 0  # doesnt matter we assume DQD for direct anyway
@@ -910,21 +909,21 @@ class LINData3D:
         with open(self.ac2, "r") as acqusfile:
             for line in acqusfile:
                 if "##$TD=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     p1 = int(value)
 
                 if "##$FnMODE=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.acq[1] = int(value)
 
         with open(self.ac3, "r") as acqusfile:
             for line in acqusfile:
                 if "##$TD=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     p2 = int(value)
 
                 if "##$FnMODE=" in line:
-                    (name, value) = line.split()
+                    (_, value) = line.split()
                     self.acq[2] = int(value)
 
         if p0 and p1 and p2:  # we got # points for all three dimensions
@@ -1210,34 +1209,27 @@ class NUSData3D:
         p0 = p1 = p2 = 0  # we'll find these in the files
         dec = dsp = grp = 0  # we'll find these in the files
 
-        acqusfile = open(self.ac1, "r")
-
-        for line in acqusfile:
-            if "##$TD=" in line:
-                (name, value) = line.split()
-                p0 = int(int(value) / 2)
-            if "##$DECIM=" in line:
-                (name, value) = line.split()
-                dec = int(value)
-            if "##$DSPFVS=" in line:
-                (name, value) = line.split()
-                dsp = int(value)
-            if "##$GRPDLY=" in line:
-                (name, value) = line.split()
-                grp = float(value)
-
-        acqusfile.close()
+        with open(self.ac1, "r") as acqusfile:
+            for line in acqusfile:
+                if "##$TD=" in line:
+                    (name, value) = line.split()
+                    p0 = int(int(value) / 2)
+                if "##$DECIM=" in line:
+                    (name, value) = line.split()
+                    dec = int(value)
+                if "##$DSPFVS=" in line:
+                    (name, value) = line.split()
+                    dsp = int(value)
+                if "##$GRPDLY=" in line:
+                    (name, value) = line.split()
+                    grp = float(value)
 
         if not decim:
             decim = dec
         if not dspfvs:
             dspfvs = dsp
         if not grpdly:
-            if 'grp' in locals():
-                grpdly = grp
-            else:
-                grpdly = dd2g(dspfvs, decim)
-
+            grpdly = grp if 'grp' in locals() else dd2g(dspfvs, decim)
         points_in_direct_fid = p0 * 2
         print('Number of R+I points: ' + str(points_in_direct_fid))
         print('DECIM= ' + str(decim) + ' DSPFVS= ' + str(dspfvs) + ' GRPDLY= ' + str(grpdly))
@@ -1251,9 +1243,7 @@ class NUSData3D:
             nuslist = []
             for line in lines:
                 point = line.split()
-                coordinate = []
-                for coord in point:
-                    coordinate.append(int(coord))
+                coordinate = [int(coord) for coord in point]
                 nuslist.append(coordinate)
         self.nusList = np.array(nuslist)
         self.nusDimensions = len(nuslist[0])
