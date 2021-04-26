@@ -303,7 +303,7 @@ class Bruker1D:
     """
     def __init__(self, data_dir='.', ser_file='fid', processed_dir=None,
                  decim=None, dspfvs=None, grpdly=None, verbose=0
-                ):
+                ):  # sourcery no-metrics
         
         # create the file names for where the data/params are
         self.acqu = os.path.join(data_dir, 'acqu')
@@ -442,7 +442,7 @@ class Bruker1D:
         # lets convert the data
         if self.decim and self.dspfvs:
             if not self.grpdly:
-                self.grpdly = dd2g(dspfvs, decim)
+                self.grpdly = dd2g(self.dspfvs, self.decim)
             #self.grpdly = np.floor(self.grpdly)
             self.convert_bruker_1d()
         elif self.grpdly and not self.decim and not self.dspfvs:
@@ -564,40 +564,36 @@ class LINData2D:
         p0 = p1 = 0  # we'll find these in the files
         dec = dsp = grp = 0  # we'll find these in the files
 
-        acqusfile = open(self.ac1, "r")
-        for line in acqusfile:
-            if "##$TD=" in line:
-                (name, value) = line.split()
-                p0 = int(value)
-            if "##$DECIM=" in line:
-                (name, value) = line.split()
-                dec = int(value)
-            if "##$DSPFVS=" in line:
-                (name, value) = line.split()
-                dsp = int(value)
-            if "##$GRPDLY=" in line:
-                (name, value) = line.split()
-                grp = float(value)
+        with open(self.ac1, "r") as acqusfile:
+            for line in acqusfile:
+                if "##$TD=" in line:
+                    (name, value) = line.split()
+                    p0 = int(value)
+                if "##$DECIM=" in line:
+                    (name, value) = line.split()
+                    dec = int(value)
+                if "##$DSPFVS=" in line:
+                    (name, value) = line.split()
+                    dsp = int(value)
+                if "##$GRPDLY=" in line:
+                    (name, value) = line.split()
+                    grp = float(value)
 
-            if "##$BYTORDA=" in line:
-                (name, value) = line.split()
-                self.byte_order = float(value)
+                if "##$BYTORDA=" in line:
+                    (name, value) = line.split()
+                    self.byte_order = float(value)
 
-            self.acq[0] = 0  # doesnt matter we assume DQD for direct anyway
+                self.acq[0] = 0  # doesnt matter we assume DQD for direct anyway
 
-        acqusfile.close()
+        with open(self.ac2, "r") as acqusfile:
+            for line in acqusfile:
+                if "##$TD=" in line:
+                    (name, value) = line.split()
+                    p1 = int(value)
 
-        acqusfile = open(self.ac2, "r")
-        for line in acqusfile:
-            if "##$TD=" in line:
-                (name, value) = line.split()
-                p1 = int(value)
-
-            if "##$FnMODE=" in line:
-                (name, value) = line.split()
-                self.acq[1] = int(value)
-
-        acqusfile.close()
+                if "##$FnMODE=" in line:
+                    (name, value) = line.split()
+                    self.acq[1] = int(value)
 
         if p0 and p1:
             points = [p0, p1]
@@ -620,17 +616,13 @@ class LINData2D:
         print('Data Points structure is: ' + str(points))
         print('DECIM= ' + str(decim) + ' DSPFVS= ' + str(dspfvs) + ' GRPDLY= ' + str(grpdly))
 
-        if dim_status is None:
-            self.dim_status = ['t', 't']  # dim status: is data in f or t domain. We assume all t at first
-        else:
-            self.dim_status = dim_status
-
+        self.dim_status = ['t', 't'] if dim_status is None else dim_status
         if dim_status:
             if len(dim_status) != len(points):
                 raise ValueError("insanity: number of dimensions in 'points' and 'dim_status' don't match")
             else:
                 for i in range(len(dim_status)):
-                    if dim_status[i] != 't' and dim_status[i] != 'f':
+                    if dim_status[i] not in ['t', 'f']:
                         print(dim_status[i])
                         raise ValueError("dimension domains must be 'f' - frequency or 't' - time")
 
@@ -653,12 +645,9 @@ class LINData2D:
 
         # lets convert the data
         if decim and dspfvs:
-            if grpdly:
-                self.convert_bruker_2d(grpdly)
-            else:
+            if not grpdly:
                 grpdly = dd2g(dspfvs, decim)
-                self.convert_bruker_2d(grpdly)
-
+            self.convert_bruker_2d(grpdly)
         elif grpdly and not decim and not dspfvs:
             self.convert_bruker_2d(grpdly)
 
@@ -681,11 +670,11 @@ class LINData2D:
 
         # edit the number of points in first dimension after Bruker filter removal
         # we now count points in complex numbers as well
-        self.points[0] = len(remove_bruker_filter(make_complex(self.raw_data[:, 0]), grpdly))
+        self.points[0] = len(remove_bruker_delay(make_complex(self.raw_data[:, 0]), grpdly))
 
         # convert the data
         for i in range(self.points[1]):  # inner loop for second dimension points from dataFID
-            fid = remove_bruker_filter(make_complex(self.raw_data[:, i]), grpdly)
+            fid = remove_bruker_delay(make_complex(self.raw_data[:, i]), grpdly)
             self.converted_data[0:len(fid), i] = fid
 
         self.converted_data = self.converted_data[
@@ -717,12 +706,8 @@ class LINData2D:
 
             elif t2_ss == 'poly':
                 co_ef = np.polynomial.polynomial.polyfit(np.arange(len(fid)), fid, 5)
-                polyline = 0
                 time_points = np.arange(len(fid))
-                for iii in range(len(co_ef)):
-                    # print(co_ef)
-                    polyline += co_ef[iii] * time_points ** iii  # add the i'th order polynomial to polyline
-
+                polyline = sum(co_ef[iii] * time_points ** iii for iii in range(len(co_ef)))
                 fid = fid - polyline
 
             fid = fid * window_function(points=len(fid),
@@ -751,11 +736,11 @@ class LINData2D:
             self.processed_data[i, 0:len(fid)] = fid
             self.processed_data[i, len(fid):] = np.zeros(self.ft_points[1]-len(fid))
 
-            if self.acq[1] != 5 or self.acq[1] != 5:
+            if self.acq[1] != 5:
                 self.processed_data[i, :] = np.fft.fftshift(
                     np.fft.fft(self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
 
-            elif self.acq[1] == 5 or self.acq[1] == 3:  # states tppi or tppi - don't fftshift
+            else:
                 self.processed_data[i, :] = np.fft.fft(
                     self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
 
@@ -778,11 +763,11 @@ class LINData2D:
             self.processed_data[i, 0:len(fid)] = fid
             self.processed_data[i, len(fid):] = np.zeros(self.ft_points[1]-len(fid))
 
-            if self.acq[1] != 5 or self.acq[1] != 5:
+            if self.acq[1] != 5:
                 self.processed_data[i, :] = np.fft.fftshift(
                     np.fft.fft(self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
 
-            elif self.acq[1] == 5 or self.acq[1] == 3:  # states tppi or tppi - don't fftshift
+            else:
                 self.processed_data[i, :] = np.fft.fft(
                     self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
 
@@ -901,55 +886,46 @@ class LINData3D:
         p0 = p1 = p2 = 0  # we'll find these in the files
         dec = dsp = grp = 0  # we'll find these in the files
 
-        # read the first dimension details
-        acqusfile = open(self.ac1, "r")
-        for line in acqusfile:
-            if "##$TD=" in line:
-                (name, value) = line.split()
-                p0 = int(value)
-            if "##$DECIM=" in line:
-                (name, value) = line.split()
-                dec = int(value)
-            if "##$DSPFVS=" in line:
-                (name, value) = line.split()
-                dsp = int(value)
-            if "##$GRPDLY=" in line:
-                (name, value) = line.split()
-                grp = float(value)
+        with open(self.ac1, "r") as acqusfile:
+            for line in acqusfile:
+                if "##$TD=" in line:
+                    (name, value) = line.split()
+                    p0 = int(value)
+                if "##$DECIM=" in line:
+                    (name, value) = line.split()
+                    dec = int(value)
+                if "##$DSPFVS=" in line:
+                    (name, value) = line.split()
+                    dsp = int(value)
+                if "##$GRPDLY=" in line:
+                    (name, value) = line.split()
+                    grp = float(value)
 
-            if "##$BYTORDA=" in line:
-                (name, value) = line.split()
-                self.byte_order = float(value)
+                if "##$BYTORDA=" in line:
+                    (name, value) = line.split()
+                    self.byte_order = float(value)
 
-            self.acq[0] = 0  # doesnt matter we assume DQD for direct anyway
+                self.acq[0] = 0  # doesnt matter we assume DQD for direct anyway
 
-        acqusfile.close()
+        with open(self.ac2, "r") as acqusfile:
+            for line in acqusfile:
+                if "##$TD=" in line:
+                    (name, value) = line.split()
+                    p1 = int(value)
 
-        # read second dimension details
-        acqusfile = open(self.ac2, "r")
-        for line in acqusfile:
-            if "##$TD=" in line:
-                (name, value) = line.split()
-                p1 = int(value)
+                if "##$FnMODE=" in line:
+                    (name, value) = line.split()
+                    self.acq[1] = int(value)
 
-            if "##$FnMODE=" in line:
-                (name, value) = line.split()
-                self.acq[1] = int(value)
+        with open(self.ac3, "r") as acqusfile:
+            for line in acqusfile:
+                if "##$TD=" in line:
+                    (name, value) = line.split()
+                    p2 = int(value)
 
-        acqusfile.close()
-
-        # read third dimension details
-        acqusfile = open(self.ac3, "r")
-        for line in acqusfile:
-            if "##$TD=" in line:
-                (name, value) = line.split()
-                p2 = int(value)
-
-            if "##$FnMODE=" in line:
-                (name, value) = line.split()
-                self.acq[2] = int(value)
-
-        acqusfile.close()
+                if "##$FnMODE=" in line:
+                    (name, value) = line.split()
+                    self.acq[2] = int(value)
 
         if p0 and p1 and p2:  # we got # points for all three dimensions
             points = [p0, p1, p2]
@@ -972,17 +948,13 @@ class LINData3D:
         print('Data Points structure is: ' + str(points))
         print('DECIM= ' + str(decim) + ' DSPFVS= ' + str(dspfvs) + ' GRPDLY= ' + str(grpdly))
 
-        if dim_status is None:
-            self.dim_status = ['t', 't', 't']  # dim status: is data in f or t domain. We assume all t at first
-        else:
-            self.dim_status = dim_status
-
+        self.dim_status = ['t', 't', 't'] if dim_status is None else dim_status
         if dim_status:
             if len(dim_status) != len(points):
                 raise ValueError("insanity: number of dimensions in 'points' and 'dim_status' don't match")
             else:
                 for i in range(len(dim_status)):
-                    if dim_status[i] != 't' and dim_status[i] != 'f':
+                    if dim_status[i] not in ['t', 'f']:
                         print(dim_status[i])
                         raise ValueError("dimension domains must be 'f' - frequency or 't' - time")
 
@@ -1005,12 +977,9 @@ class LINData3D:
 
         # lets convert the data
         if decim and dspfvs:
-            if grpdly:
-                self.convert_bruker_3d(grpdly)
-            else:
+            if not grpdly:
                 grpdly = dd2g(dspfvs, decim)
-                self.convert_bruker_3d(grpdly)
-
+            self.convert_bruker_3d(grpdly)
         elif grpdly and not decim and not dspfvs:
             self.convert_bruker_3d(grpdly)
 
@@ -1085,12 +1054,8 @@ class LINData3D:
 
                 elif t3_ss == 'poly':
                     co_ef = np.polynomial.polynomial.polyfit(np.arange(len(fid)),  fid,  5)
-                    polyline = 0
                     time_points = np.arange(len(fid))
-                    for iii in range(len(co_ef)):
-                        # print(co_ef)
-                        polyline += co_ef[iii] * time_points ** iii  # add the i'th order polynomial to polyline
-
+                    polyline = sum(co_ef[iii] * time_points ** iii for iii in range(len(co_ef)))
                     fid = fid - polyline
 
                 # fid[0:len(window)] = fid[0:len(window)] * window
@@ -1119,11 +1084,11 @@ class LINData3D:
                 self.processed_data[ii, 0:len(fid), i] = fid
                 self.processed_data[ii, len(fid):, i] = np.zeros(self.ft_points[1]-len(fid))
 
-                if self.acq[1] != 5 and self.acq[1] != 3:
+                if self.acq[1] not in [5, 3]:
                     self.processed_data[ii, :, i] = fftshift(
                         fft(self.processed_data[ii, :, i] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
 
-                elif self.acq[1] == 5 or self.acq[1] == 3:  # states tppi or tppi - don't fftshift
+                else:
                     self.processed_data[ii, :, i] = fft(
                         self.processed_data[ii, :, i] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
 
@@ -1333,13 +1298,13 @@ class NUSData3D:
                       grpdly
                       ):
         # edit the number of points in first dimension after Bruker filter removal
-        self.points = len(remove_bruker_filter(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly))
+        self.points = len(remove_bruker_delay(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly))
         # zero fill in a 3D matrix with complex zeros
         self.convertedNUSData = np.zeros((self.points, 4, self.nusPoints), dtype='complex128')
         # load the data
         for ii in range(self.nusPoints):  #
             for i in range(4):
-                fid = remove_bruker_filter(make_complex(np.copy(self.nusData[:, i, ii])), grpdly)
+                fid = remove_bruker_delay(make_complex(np.copy(self.nusData[:, i, ii])), grpdly)
                 self.convertedNUSData[0:len(fid), i, ii] = fid
 
     def orderData(self):
@@ -1350,14 +1315,10 @@ class NUSData3D:
         # orderedData = np.zeros( 2**self.nusDimensions * self.nusPoints * self.pointsInDirectFid)
         orderedData = np.zeros((self.pointsInDirectFid, 4, self.nusPoints), dtype='int64')
         orderedConvertedData = np.zeros((self.points, 4, self.nusPoints), dtype='complex128')
-        # print(len(ordered_data))
-        i = 0
-        for point in self.orderedNUSlistIndex:
+        for i, point in enumerate(self.orderedNUSlistIndex):
             # self.nusData[:,i,ii]
             orderedData[:, :, i] = self.nusData[:, :, point]
             orderedConvertedData[:, :, i] = self.convertedNUSData[:, :, point]
-            i += 1
-
         # now set the object attributes to the ordered state
         self.nusData = orderedData
         self.convertedNUSData = orderedConvertedData
