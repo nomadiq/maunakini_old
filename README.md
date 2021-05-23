@@ -1,3 +1,3 @@
 # MaunaKini Processing
 
-Lots of Sampling methods will end up here.
+Lots of processing and extraction methods will end up here.
