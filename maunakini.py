@@ -782,7 +782,7 @@ class LINData2D:
         decim=None,
         dspfvs=None,
         grpdly=None,
-    ):
+    ):  # sourcery no-metrics
 
         self.ac1 = os.path.join(data_dir, "acqus")
         self.ac2 = os.path.join(data_dir, "acqu2s")
@@ -1158,7 +1158,7 @@ class LINData3D:
         decim=None,
         dspfvs=None,
         grpdly=None,
-    ):
+    ):  # sourcery no-metrics
 
         self.ac1 = os.path.join(data_dir, "acqus")
         self.ac2 = os.path.join(data_dir, "acqu2s")
@@ -1570,7 +1570,7 @@ class NUSData3D:
         decim=None,
         dspfvs=None,
         grpdly=None,
-    ):
+    ):  # sourcery no-metrics
 
         self.ac1 = os.path.join(data_dir, "acqus")
         self.ac2 = os.path.join(data_dir, "acqu2s")
