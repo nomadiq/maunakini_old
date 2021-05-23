@@ -178,7 +178,7 @@ def default_tract_params():
 
     return params
 
-def tc_algebraic(Ra, Rb, field, params=None):
+def tc_tract_algebraic(Ra, Rb, field, params=None):
     
     if not params: # use these defaults
         params = default_tract_params()
@@ -206,7 +206,7 @@ def tc_algebraic(Ra, Rb, field, params=None):
     return t1 - t2 + t3
 
 
-def tc_algebraic_S2(Ra, Rb, field, S2, params=None):
+def tc_tract_algebraic_S2(Ra, Rb, field, S2, params=None):
     
     if not params: # use these defaults
         params = default_tract_params()
