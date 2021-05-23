@@ -160,32 +160,82 @@ def fit_exp_decay(t, I, param_guess=None):
     env_model = lambda t, R, a, b: a*np.exp(-R*t) + b
     fit =  curve_fit(env_model, t, I, p0=param_guess, maxfev=200000)
     return fit, env_model(t, fit[0][0], fit[0][1], fit[0][2])
+
+def J(w, tc):
+    return 0.4*tc/(1+(w**2*tc**2))
+
+def J_S2(w, tc, S2):
+    return S2*J(w, tc)
+
+def default_tract_params():
+    params = {'h': 6.62607004 * (1/np.power(10,34, dtype=np.longdouble))}  # Plank's
+    params['mu_0'] = 1.25663706 * (1/np.power(10,6, dtype=np.longdouble))  # vacuum permeability
+    params['gamma_H'] = 267.52218744 * np.power(10,6, dtype=np.longdouble) # proton gyromagnetic ratio
+    params['gamma_N'] = -27.116 * np.power(10,6, dtype=np.longdouble)      # 15N gyromagnetic ratio
+    params['r'] = 1.02 * (1/np.power(10,10, dtype=np.longdouble))          # internuclear distance
+    params['delta_dN'] = 160 * (1/np.power(10, 6))                         # diff in axially symetric 15N CS tensor
+    params['theta'] = 17*np.pi/180                                         # angle between CSA axis and N-H bond
+
+    return params
+
+def tc_algebraic(Ra, Rb, field, params=None):
     
-def calc_tau_c_from_TRACT(Ra, Rb, field):
-    # Determine the Tau_c value
-
-    # constants
-    h = 6.62607004 * (1/np.power(10,34, dtype=np.longdouble))    # Plank's
-    mu_0 = 1.25663706 * (1/np.power(10,6, dtype=np.longdouble))  # vacuum permeability
-    gamma_H = 267.52218744 * np.power(10,6, dtype=np.longdouble) # proton gyromagnetic ratio
-    gamma_N = -27.116 * np.power(10,6, dtype=np.longdouble)      # 15N gyromagnetic ratio
-    r = 1.02 * (1/np.power(10,10, dtype=np.longdouble))          # internuclear distance
-    delta_dN = 160 * (1/np.power(10, 6))                         # diff in axially symetric 15N CS tensor
-    theta = 17*np.pi/180                                         # angle between CSA axis and N-H bond
-
-    # derived field value in Tesla
+    if not params: # use these defaults
+        params = default_tract_params()
+       
+    h = params['h']
+    mu_0 = params['mu_0']
+    gamma_H = params['gamma_H']
+    gamma_N = params['gamma_N']
+    r = params['r']
+    delta_dN = params['delta_dN']
+    theta = params['theta']
+        
+        
     B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H # in Tesla
-
     p = mu_0*gamma_H*gamma_N*h/(16*np.pi*np.pi*np.sqrt(2)*np.power(r,3))     # DD 1H-15N bond
     dN = gamma_N*B_0*delta_dN/(3*np.sqrt(2))                                 # 15N CSA
     w_N = B_0 * gamma_N                                                      # 15N frequency (radians/s)
-
+    
     c = (Rb - Ra)/(2*dN*p*(3*np.cos(theta)**2-1))
+    
     t1 = (5*c)/24 
     t2 = (336*(w_N**2) - 25*(c**2)*(w_N**4)) / (24*(w_N**2) * (1800*c*(w_N**4) + 125*(c**3)*(w_N**6) + 24*np.sqrt(3)*np.sqrt(21952*(w_N**6) - 3025*(c**2)*(w_N**8) + 625*(c**4)*(w_N**10)))**(1/3))
-    t3 = (1800*c*(w_N**4) + 125*(c**3)*(w_N**6) + 24*np.sqrt(3)*np.sqrt(21952*(w_N**6) - 3025*(c**2)*(w_N**8) + 625*(c**4)*(w_N**10)))**(1/3)/(24*w_N**2) 
+    t3 = (1800*c*(w_N**4) + 125*(c**3)*(w_N**6) + 24*np.sqrt(3)*np.sqrt(21952*(w_N**6) - 3025*(c**2)*(w_N**8) + 625*(c**4)*(w_N**10)))**(1/3)/(24*w_N**2)    
     
     return t1 - t2 + t3
+
+
+def tc_algebraic_S2(Ra, Rb, field, S2, params=None):
+    
+    if not params: # use these defaults
+        params = default_tract_params()
+        
+    h = params['h']
+    mu_0 = params['mu_0']
+    gamma_H = params['gamma_H']
+    gamma_N = params['gamma_N']
+    r = params['r']
+    delta_dN = params['delta_dN']
+    theta = params['theta']
+        
+
+        
+    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H # in Tesla
+    p = mu_0*gamma_H*gamma_N*h/(16*np.pi*np.pi*np.sqrt(2)*np.power(r,3))     # DD 1H-15N bond
+    dN = gamma_N*B_0*delta_dN/(3*np.sqrt(2))                                 # 15N CSA
+    w_N = B_0 * gamma_N                                                      # 15N frequency (radians/s)
+    
+    c = (Rb - Ra)/(2*dN*p*(3*np.cos(theta)**2-1))
+    w = w_N
+    
+    t1 = ((125 *(c**3)*(w**6) + 24*np.sqrt(3)*np.sqrt(625*(c**4)*(S2**2)*(w**10) - 3025*(c**2)*(S2**4)*(w**8) + 21952*(S2**6)*(w**6)) + 1800*c*(S2**2)*(w**4))**(1/3))/(24*S2*w**2) 
+    
+    t2 = -1*(336*(S2**2)*(w**2) - 25*(c**2)*(w**4))/((24*S2*(w**2)*(125*(c**3)*(w**6) + 24*np.sqrt(3)*np.sqrt(625*(c**4)*(S2**2)*(w**10) - 3025*(c**2)*(S2**4)*(w**8) + 21952*(S2**6)*(w**6)) + 1800*c*(S2**2)*(w**4))**(1/3)) )
+    
+    t3 = + (5*c)/(24*S2)
+
+    return t1 + t2 + t3
 
 
 # ------------------------------------- #
