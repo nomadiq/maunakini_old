@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-import maunakini as mk
+#import maunakini as mk
 import matplotlib.pyplot as plt
 import sys
 from os import path
