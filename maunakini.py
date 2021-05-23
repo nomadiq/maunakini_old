@@ -22,9 +22,11 @@ import scipy.signal as signal
 from scipy.optimize.minpack import curve_fit
 from scipy.fftpack import fftshift, fft
 import math
+
 # from pathlib import Path
 import os.path
-#from numba import jit, njit, prange
+
+# from numba import jit, njit, prange
 import colorama
 
 # ------------------------------------- #
@@ -32,38 +34,40 @@ import colorama
 # ------------------------------------- #
 
 
-
-
 # ------------------------------------- #
 #              Functions                #
 # ------------------------------------- #
 
+
 def get_aq_mod(acq):
 
     if isinstance(acq, int):
-        aq_mod_dict = {0: 'qf',
-                       1: 'qsim',
-                       2: 'qseq',
-                       3: 'DQD',
-                       4: 'parallelQsim',
-                       5: 'parallelDQD',
-                       }
+        aq_mod_dict = {
+            0: "qf",
+            1: "qsim",
+            2: "qseq",
+            3: "DQD",
+            4: "parallelQsim",
+            5: "parallelDQD",
+        }
 
         return aq_mod_dict[acq]
     else:
         return None
 
+
 def get_fn_mod(acq):
 
     if isinstance(acq, int):
-        fn_mod_dict = {0: 'undefined',
-                       1: 'QF',
-                       2: 'QSEQ',
-                       3: 'TPPI',
-                       4: 'States',
-                       5: 'States-TPPI',
-                       6: 'Echo-Antiecho',
-                       }
+        fn_mod_dict = {
+            0: "undefined",
+            1: "QF",
+            2: "QSEQ",
+            3: "TPPI",
+            4: "States",
+            5: "States-TPPI",
+            6: "Echo-Antiecho",
+        }
 
         return fn_mod_dict[acq]
     else:
@@ -72,7 +76,7 @@ def get_fn_mod(acq):
 
 def make_complex(data):
 
-    return data[..., ::2] + data[..., 1::2] * 1.j
+    return data[..., ::2] + data[..., 1::2] * 1.0j
 
 
 def next_fourier_number(num):
@@ -86,7 +90,7 @@ def remove_bruker_delay(data, grpdly):
     fract_shift = grpdly - integer_shift
     data = np.roll(data, -int(integer_shift))
     data = nmr_fft(data) / n
-    data = data * np.exp(2.j * np.pi * (fract_shift) * np.arange(n) / n)
+    data = data * np.exp(2.0j * np.pi * (fract_shift) * np.arange(n) / n)
     data = i_nmr_fft(data) * n
     return data
 
@@ -94,13 +98,15 @@ def remove_bruker_delay(data, grpdly):
 def nmr_fft(data):
     return np.fft.fftshift(np.fft.fft(data))
 
+
 def i_nmr_fft(data):
     return np.fft.ifft(np.fft.ifftshift(data))
+
 
 def butter_highpass(cutoff, fs, order=5):
     nyq = 0.5 * fs
     normal_cutoff = cutoff / nyq
-    b, a = signal.butter(order, normal_cutoff, btype='high', analog=False)
+    b, a = signal.butter(order, normal_cutoff, btype="high", analog=False)
     return b, a
 
 
@@ -112,41 +118,103 @@ def butter_highpass_filter(data, cutoff, fs, order=5):
 def dd2g(dspfvs, decim):
     dspdic = {
         10: {
-            2: 44.75, 3: 33.5, 4: 66.625, 6: 59.083333333333333, 8: 68.5625, 12: 60.375, 16: 69.53125,
-            24: 61.020833333333333, 32: 70.015625, 48: 61.34375, 64: 70.2578125, 96: 61.505208333333333,
-            128: 70.37890625, 192: 61.5859375, 256: 70.439453125, 384: 61.626302083333333, 512: 70.4697265625,
-            768: 61.646484375, 1024: 70.48486328125, 1536: 61.656575520833333, 2048: 70.492431640625,
-            },
+            2: 44.75,
+            3: 33.5,
+            4: 66.625,
+            6: 59.083333333333333,
+            8: 68.5625,
+            12: 60.375,
+            16: 69.53125,
+            24: 61.020833333333333,
+            32: 70.015625,
+            48: 61.34375,
+            64: 70.2578125,
+            96: 61.505208333333333,
+            128: 70.37890625,
+            192: 61.5859375,
+            256: 70.439453125,
+            384: 61.626302083333333,
+            512: 70.4697265625,
+            768: 61.646484375,
+            1024: 70.48486328125,
+            1536: 61.656575520833333,
+            2048: 70.492431640625,
+        },
         11: {
-            2: 46.0, 3: 36.5, 4: 48.0, 6: 50.166666666666667, 8: 53.25, 12: 69.5, 16: 72.25, 24: 70.166666666666667,
-            32: 72.75, 48: 70.5, 64: 73.0, 96: 70.666666666666667, 128: 72.5, 192: 71.333333333333333, 256: 72.25,
-            384: 71.666666666666667, 512: 72.125, 768: 71.833333333333333, 1024: 72.0625, 1536: 71.916666666666667,
-            2048: 72.03125
-            },
+            2: 46.0,
+            3: 36.5,
+            4: 48.0,
+            6: 50.166666666666667,
+            8: 53.25,
+            12: 69.5,
+            16: 72.25,
+            24: 70.166666666666667,
+            32: 72.75,
+            48: 70.5,
+            64: 73.0,
+            96: 70.666666666666667,
+            128: 72.5,
+            192: 71.333333333333333,
+            256: 72.25,
+            384: 71.666666666666667,
+            512: 72.125,
+            768: 71.833333333333333,
+            1024: 72.0625,
+            1536: 71.916666666666667,
+            2048: 72.03125,
+        },
         12: {
-            2: 46.0, 3: 36.5, 4: 48.0, 6: 50.166666666666667, 8: 53.25, 12: 69.5, 16: 71.625, 24: 70.166666666666667,
-            32: 72.125, 48: 70.5, 64: 72.375, 96: 70.666666666666667, 128: 72.5, 192: 71.333333333333333, 256: 72.25,
-            384: 71.666666666666667, 512: 72.125, 768: 71.833333333333333, 1024: 72.0625, 1536: 71.916666666666667,
-            2048: 72.03125
-            },
+            2: 46.0,
+            3: 36.5,
+            4: 48.0,
+            6: 50.166666666666667,
+            8: 53.25,
+            12: 69.5,
+            16: 71.625,
+            24: 70.166666666666667,
+            32: 72.125,
+            48: 70.5,
+            64: 72.375,
+            96: 70.666666666666667,
+            128: 72.5,
+            192: 71.333333333333333,
+            256: 72.25,
+            384: 71.666666666666667,
+            512: 72.125,
+            768: 71.833333333333333,
+            1024: 72.0625,
+            1536: 71.916666666666667,
+            2048: 72.03125,
+        },
         13: {
-            2: 2.75, 3: 2.8333333333333333, 4: 2.875, 6: 2.9166666666666667, 8: 2.9375, 12: 2.9583333333333333,
-            16: 2.96875, 24: 2.9791666666666667, 32: 2.984375, 48: 2.9895833333333333, 64: 2.9921875,
-            96: 2.9947916666666667
-            }
-        }
+            2: 2.75,
+            3: 2.8333333333333333,
+            4: 2.875,
+            6: 2.9166666666666667,
+            8: 2.9375,
+            12: 2.9583333333333333,
+            16: 2.96875,
+            24: 2.9791666666666667,
+            32: 2.984375,
+            48: 2.9895833333333333,
+            64: 2.9921875,
+            96: 2.9947916666666667,
+        },
+    }
     return dspdic[dspfvs][decim]
 
 
-def window_function(points=0, window='sb', window_p=0.5) -> np.ndarray:
-    if window == 'sb':
-        return np.sin((
-            window_p * math.pi +
-            (0.99 - window_p) *
-            math.pi * np.arange(points) /
-            points))
+def window_function(points=0, window="sb", window_p=0.5) -> np.ndarray:
+    if window == "sb":
+        return np.sin(
+            (
+                window_p * math.pi
+                + (0.99 - window_p) * math.pi * np.arange(points) / points
+            )
+        )
     else:
         return np.ones(points)
+
 
 def fit_exp_decay(t, I, param_guess=None):
     # Fit relaxation curves to extract time parameters
@@ -155,85 +223,168 @@ def fit_exp_decay(t, I, param_guess=None):
         param_guess = np.zeros(3)
         param_guess[0] = 20
         param_guess[1] = I[0]
-        param_guess[2] = I[0]*0.01 # 1% of most intense point
+        param_guess[2] = I[0] * 0.01  # 1% of most intense point
 
-    env_model = lambda t, R, a, b: a*np.exp(-R*t) + b
-    fit =  curve_fit(env_model, t, I, p0=param_guess, maxfev=200000)
+    env_model = lambda t, R, a, b: a * np.exp(-R * t) + b
+    fit = curve_fit(env_model, t, I, p0=param_guess, maxfev=200000)
     return fit, env_model(t, fit[0][0], fit[0][1], fit[0][2])
 
+
 def J(w, tc):
-    return 0.4*tc/(1+(w**2*tc**2))
+    return 0.4 * tc / (1 + (w ** 2 * tc ** 2))
+
 
 def J_S2(w, tc, S2):
-    return S2*J(w, tc)
+    return S2 * J(w, tc)
+
 
 def default_tract_params():
-    params = {'h': 6.62607004 * (1/np.power(10,34, dtype=np.longdouble))}  # Plank's
-    params['mu_0'] = 1.25663706 * (1/np.power(10,6, dtype=np.longdouble))  # vacuum permeability
-    params['gamma_H'] = 267.52218744 * np.power(10,6, dtype=np.longdouble) # proton gyromagnetic ratio
-    params['gamma_N'] = -27.116 * np.power(10,6, dtype=np.longdouble)      # 15N gyromagnetic ratio
-    params['r'] = 1.02 * (1/np.power(10,10, dtype=np.longdouble))          # internuclear distance
-    params['delta_dN'] = 160 * (1/np.power(10, 6))                         # diff in axially symetric 15N CS tensor
-    params['theta'] = 17*np.pi/180                                         # angle between CSA axis and N-H bond
+    params = {"h": 6.62607004 * (1 / np.power(10, 34, dtype=np.longdouble))}  # Plank's
+    params["mu_0"] = 1.25663706 * (
+        1 / np.power(10, 6, dtype=np.longdouble)
+    )  # vacuum permeability
+    params["gamma_H"] = 267.52218744 * np.power(
+        10, 6, dtype=np.longdouble
+    )  # proton gyromagnetic ratio
+    params["gamma_N"] = -27.116 * np.power(
+        10, 6, dtype=np.longdouble
+    )  # 15N gyromagnetic ratio
+    params["r"] = 1.02 * (
+        1 / np.power(10, 10, dtype=np.longdouble)
+    )  # internuclear distance
+    params["delta_dN"] = 160 * (
+        1 / np.power(10, 6)
+    )  # diff in axially symetric 15N CS tensor
+    params["theta"] = 17 * np.pi / 180  # angle between CSA axis and N-H bond
 
     return params
 
+
 def tc_tract_algebraic(Ra, Rb, field, params=None):
-    
-    if not params: # use these defaults
+
+    if not params:  # use these defaults
         params = default_tract_params()
-       
-    h = params['h']
-    mu_0 = params['mu_0']
-    gamma_H = params['gamma_H']
-    gamma_N = params['gamma_N']
-    r = params['r']
-    delta_dN = params['delta_dN']
-    theta = params['theta']
-        
-        
-    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H # in Tesla
-    p = mu_0*gamma_H*gamma_N*h/(16*np.pi*np.pi*np.sqrt(2)*np.power(r,3))     # DD 1H-15N bond
-    dN = gamma_N*B_0*delta_dN/(3*np.sqrt(2))                                 # 15N CSA
-    w_N = B_0 * gamma_N                                                      # 15N frequency (radians/s)
-    
-    c = (Rb - Ra)/(2*dN*p*(3*np.cos(theta)**2-1))
-    
-    t1 = (5*c)/24 
-    t2 = (336*(w_N**2) - 25*(c**2)*(w_N**4)) / (24*(w_N**2) * (1800*c*(w_N**4) + 125*(c**3)*(w_N**6) + 24*np.sqrt(3)*np.sqrt(21952*(w_N**6) - 3025*(c**2)*(w_N**8) + 625*(c**4)*(w_N**10)))**(1/3))
-    t3 = (1800*c*(w_N**4) + 125*(c**3)*(w_N**6) + 24*np.sqrt(3)*np.sqrt(21952*(w_N**6) - 3025*(c**2)*(w_N**8) + 625*(c**4)*(w_N**10)))**(1/3)/(24*w_N**2)    
-    
+
+    h = params["h"]
+    mu_0 = params["mu_0"]
+    gamma_H = params["gamma_H"]
+    gamma_N = params["gamma_N"]
+    r = params["r"]
+    delta_dN = params["delta_dN"]
+    theta = params["theta"]
+
+    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H  # in Tesla
+    p = (
+        mu_0
+        * gamma_H
+        * gamma_N
+        * h
+        / (16 * np.pi * np.pi * np.sqrt(2) * np.power(r, 3))
+    )  # DD 1H-15N bond
+    dN = gamma_N * B_0 * delta_dN / (3 * np.sqrt(2))  # 15N CSA
+    w_N = B_0 * gamma_N  # 15N frequency (radians/s)
+
+    c = (Rb - Ra) / (2 * dN * p * (3 * np.cos(theta) ** 2 - 1))
+
+    t1 = (5 * c) / 24
+    t2 = (336 * (w_N ** 2) - 25 * (c ** 2) * (w_N ** 4)) / (
+        24
+        * (w_N ** 2)
+        * (
+            1800 * c * (w_N ** 4)
+            + 125 * (c ** 3) * (w_N ** 6)
+            + 24
+            * np.sqrt(3)
+            * np.sqrt(
+                21952 * (w_N ** 6)
+                - 3025 * (c ** 2) * (w_N ** 8)
+                + 625 * (c ** 4) * (w_N ** 10)
+            )
+        )
+        ** (1 / 3)
+    )
+    t3 = (
+        1800 * c * (w_N ** 4)
+        + 125 * (c ** 3) * (w_N ** 6)
+        + 24
+        * np.sqrt(3)
+        * np.sqrt(
+            21952 * (w_N ** 6)
+            - 3025 * (c ** 2) * (w_N ** 8)
+            + 625 * (c ** 4) * (w_N ** 10)
+        )
+    ) ** (1 / 3) / (24 * w_N ** 2)
+
     return t1 - t2 + t3
 
 
 def tc_tract_algebraic_S2(Ra, Rb, field, S2, params=None):
-    
-    if not params: # use these defaults
-        params = default_tract_params()
-        
-    h = params['h']
-    mu_0 = params['mu_0']
-    gamma_H = params['gamma_H']
-    gamma_N = params['gamma_N']
-    r = params['r']
-    delta_dN = params['delta_dN']
-    theta = params['theta']
-        
 
-        
-    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H # in Tesla
-    p = mu_0*gamma_H*gamma_N*h/(16*np.pi*np.pi*np.sqrt(2)*np.power(r,3))     # DD 1H-15N bond
-    dN = gamma_N*B_0*delta_dN/(3*np.sqrt(2))                                 # 15N CSA
-    w_N = B_0 * gamma_N                                                      # 15N frequency (radians/s)
-    
-    c = (Rb - Ra)/(2*dN*p*(3*np.cos(theta)**2-1))
+    if not params:  # use these defaults
+        params = default_tract_params()
+
+    h = params["h"]
+    mu_0 = params["mu_0"]
+    gamma_H = params["gamma_H"]
+    gamma_N = params["gamma_N"]
+    r = params["r"]
+    delta_dN = params["delta_dN"]
+    theta = params["theta"]
+
+    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H  # in Tesla
+    p = (
+        mu_0
+        * gamma_H
+        * gamma_N
+        * h
+        / (16 * np.pi * np.pi * np.sqrt(2) * np.power(r, 3))
+    )  # DD 1H-15N bond
+    dN = gamma_N * B_0 * delta_dN / (3 * np.sqrt(2))  # 15N CSA
+    w_N = B_0 * gamma_N  # 15N frequency (radians/s)
+
+    c = (Rb - Ra) / (2 * dN * p * (3 * np.cos(theta) ** 2 - 1))
     w = w_N
-    
-    t1 = ((125 *(c**3)*(w**6) + 24*np.sqrt(3)*np.sqrt(625*(c**4)*(S2**2)*(w**10) - 3025*(c**2)*(S2**4)*(w**8) + 21952*(S2**6)*(w**6)) + 1800*c*(S2**2)*(w**4))**(1/3))/(24*S2*w**2) 
-    
-    t2 = -1*(336*(S2**2)*(w**2) - 25*(c**2)*(w**4))/((24*S2*(w**2)*(125*(c**3)*(w**6) + 24*np.sqrt(3)*np.sqrt(625*(c**4)*(S2**2)*(w**10) - 3025*(c**2)*(S2**4)*(w**8) + 21952*(S2**6)*(w**6)) + 1800*c*(S2**2)*(w**4))**(1/3)) )
-    
-    t3 = + (5*c)/(24*S2)
+
+    t1 = (
+        (
+            125 * (c ** 3) * (w ** 6)
+            + 24
+            * np.sqrt(3)
+            * np.sqrt(
+                625 * (c ** 4) * (S2 ** 2) * (w ** 10)
+                - 3025 * (c ** 2) * (S2 ** 4) * (w ** 8)
+                + 21952 * (S2 ** 6) * (w ** 6)
+            )
+            + 1800 * c * (S2 ** 2) * (w ** 4)
+        )
+        ** (1 / 3)
+    ) / (24 * S2 * w ** 2)
+
+    t2 = (
+        -1
+        * (336 * (S2 ** 2) * (w ** 2) - 25 * (c ** 2) * (w ** 4))
+        / (
+            (
+                24
+                * S2
+                * (w ** 2)
+                * (
+                    125 * (c ** 3) * (w ** 6)
+                    + 24
+                    * np.sqrt(3)
+                    * np.sqrt(
+                        625 * (c ** 4) * (S2 ** 2) * (w ** 10)
+                        - 3025 * (c ** 2) * (S2 ** 4) * (w ** 8)
+                        + 21952 * (S2 ** 6) * (w ** 6)
+                    )
+                    + 1800 * c * (S2 ** 2) * (w ** 4)
+                )
+                ** (1 / 3)
+            )
+        )
+    )
+
+    t3 = +(5 * c) / (24 * S2)
 
     return t1 + t2 + t3
 
@@ -244,41 +395,39 @@ def tc_tract_algebraic_S2(Ra, Rb, field, S2, params=None):
 
 
 class Scale:
-
     def __init__(self, domainrange, outrange, strict=False):
-        
+
         self.d_min = domainrange[0]
         self.d_max = domainrange[1]
         self.d_scope = self.d_max - self.d_min
-        
+
         self.o_min = outrange[0]
         self.o_max = outrange[1]
         self.o_scope = self.o_max - self.o_min
-        
+
         self.strict = strict
-        
+
     def linear(self, indomain):
-        
-        if self.strict is True and (
-            indomain <= self.d_min or indomain >= self.d_max
-        ):
-            raise Exception(f'input value {indomain} is outside the input domain for this scale')
+
+        if self.strict is True and (indomain <= self.d_min or indomain >= self.d_max):
+            raise Exception(
+                f"input value {indomain} is outside the input domain for this scale"
+            )
 
         domainfrac = (indomain - self.d_min) / self.d_scope
         outfrac = domainfrac * self.o_scope
         return self.o_min + outfrac
-    
+
     def linear_r(self, inrange):
-        
-        if self.strict is True and (
-            inrange <= self.o_min or inrange >= self.o_max
-        ):
-            raise Exception(f'input value {inrange} is outside the input domain for this scale')
+
+        if self.strict is True and (inrange <= self.o_min or inrange >= self.o_max):
+            raise Exception(
+                f"input value {inrange} is outside the input domain for this scale"
+            )
 
         domainfrac = (inrange - self.o_min) / self.o_scope
         outfrac = domainfrac * self.d_scope
         return self.d_min + outfrac
-
 
 
 class Bruker1D:
@@ -306,10 +455,10 @@ class Bruker1D:
 
         my_bruker_data.raw_data
 
-        This array is composed of a real value followed by an imaginary value (1st point) and so on, as 
+        This array is composed of a real value followed by an imaginary value (1st point) and so on, as
         4 byte integers, e.g. ririririririririririririririririririririririri
 
-        The length of this array is 
+        The length of this array is
 
         my_bruker_data.td
 
@@ -322,7 +471,7 @@ class Bruker1D:
 
         my_bruker_data.points
 
-        By default, this class attempts to find the parameters for the Bruker digital filter delay from the acqus 
+        By default, this class attempts to find the parameters for the Bruker digital filter delay from the acqus
         file in the data directory. These parameters, if found are available at
 
         my_bruker_data.decim
@@ -338,19 +487,19 @@ class Bruker1D:
 
         my_bruker_data.converted_data
 
-        Details for how this conversion is done can be found in 
+        Details for how this conversion is done can be found in
 
         mk.remove_bruker_delay.__doc__
 
-        Alternatviely, decim, dspfvs or grpdly can be manually set (in cases where they may not be recorded for some 
+        Alternatviely, decim, dspfvs or grpdly can be manually set (in cases where they may not be recorded for some
         reason in the data directory). To do so, pass in their values when constructing the Data1D object from a Bruker
         data directory:
 
-        my_bruker_data = mk.Bruker1D(data_dir='/path/to/data/', decim=123, dspfvs=456, grpdly=71.2345) 
+        my_bruker_data = mk.Bruker1D(data_dir='/path/to/data/', decim=123, dspfvs=456, grpdly=71.2345)
 
         If you do this, it will just use the grpdly value provided for filter delay removal. So it is just easier to do:
 
-        my_bruker_data = mk.Bruker1D(data_dir='/path/to/data/', grpdly=71.2345) 
+        my_bruker_data = mk.Bruker1D(data_dir='/path/to/data/', grpdly=71.2345)
 
         Constructing an object from the class can be done with two verbose levels:
 
@@ -359,7 +508,7 @@ class Bruker1D:
 
         e.g.
 
-        my_bruker_data = mk.Bruker1D(data_dir='/path/to/data/', verbose=1) 
+        my_bruker_data = mk.Bruker1D(data_dir='/path/to/data/', verbose=1)
 
         TODO:
 
@@ -388,40 +537,50 @@ class Bruker1D:
 
         my_bruker_data.bruker_proc_data
 
-        as a complex numpy array. 
+        as a complex numpy array.
     """
-    def __init__(self, data_dir='.', ser_file='fid', processed_dir=None,
-                 decim=None, dspfvs=None, grpdly=None, verbose=0
-                ):  # sourcery no-metrics
-        
+
+    def __init__(
+        self,
+        data_dir=".",
+        ser_file="fid",
+        processed_dir=None,
+        decim=None,
+        dspfvs=None,
+        grpdly=None,
+        verbose=0,
+    ):  # sourcery no-metrics
+
         # create the file names for where the data/params are
-        self.acqu = os.path.join(data_dir, 'acqu')
-        self.acqus = os.path.join(data_dir, 'acqus')
+        self.acqu = os.path.join(data_dir, "acqu")
+        self.acqus = os.path.join(data_dir, "acqus")
         self.ser = os.path.join(data_dir, ser_file)
-        self.pp  = os.path.join(data_dir, 'pulseprogram')
+        self.pp = os.path.join(data_dir, "pulseprogram")
         self.dir = data_dir
         self.proc_dir = processed_dir
 
         # check for presence of processed data in directory
         if isinstance(processed_dir, int):
             if processed_dir:
-                self.proc_dir = data_dir+'/pdata/'+str(processed_dir)+'/'
+                self.proc_dir = data_dir + "/pdata/" + str(processed_dir) + "/"
                 if verbose:
-                    print('Importing Processed Data')
+                    print("Importing Processed Data")
         else:
             self.proc_dir = 0
             if verbose:
-                print('Not importing Any Processed Data')
-                
+                print("Not importing Any Processed Data")
+
         self.converted_data = 0
         self.verbose = verbose
 
         # check if we are a Bruker 1D data set
-        if (os.path.isfile(self.acqus) and
-                os.path.isfile(self.acqu) and
-                os.path.isfile(self.ser) and
-                os.path.isfile(self.pp)):
-            
+        if (
+            os.path.isfile(self.acqus)
+            and os.path.isfile(self.acqu)
+            and os.path.isfile(self.ser)
+            and os.path.isfile(self.pp)
+        ):
+
             self.valid = True
 
             dec = dsp = grp = 0  # we'll find these in the files
@@ -449,8 +608,7 @@ class Bruker1D:
                         (_, value) = line.split()
                         self.dtypa = int(value)
 
-
-            self.td = td # number of points
+            self.td = td  # number of points
 
             if dec != 0:
                 self.decim = dec
@@ -462,26 +620,33 @@ class Bruker1D:
                 self.grpdly = dd2g(dsp, dec)
             else:
                 if self.verbose:
-                    print("problem with detecting / determining grpdly - needed for Bruker conversion")
+                    print(
+                        "problem with detecting / determining grpdly - needed for Bruker conversion"
+                    )
                 self.valid = False
 
             if self.verbose:
-                print('Data Points structure is: ' + str(td))
-                print('DECIM= ' + str(self.decim) + ' DSPFVS= ' + str(self.dspfvs) + ' GRPDLY= ' + str(self.grpdly))
+                print("Data Points structure is: " + str(td))
+                print(
+                    "DECIM= "
+                    + str(self.decim)
+                    + " DSPFVS= "
+                    + str(self.dspfvs)
+                    + " GRPDLY= "
+                    + str(self.grpdly)
+                )
 
         else:
             self.valid = False
-            print('Data Directory does not seem to contain Bruker 1D Data')
-
+            print("Data Directory does not seem to contain Bruker 1D Data")
 
         if self.valid:
             self.load_serial_file()
 
-
         # do we have bruker processed data to load?
         if self.proc_dir:
 
-            procsfile = open(self.proc_dir+'/procs')
+            procsfile = open(self.proc_dir + "/procs")
             for line in procsfile:
                 if "##$FTSIZE=" in line:
                     (_, value) = line.split()
@@ -496,158 +661,160 @@ class Bruker1D:
                     (_, value) = line.split()
                     self.proc_byte_order = float(value)
 
-            self.bruker_proc_data = np.zeros(self.proc_ft_size, dtype='complex128')
+            self.bruker_proc_data = np.zeros(self.proc_ft_size, dtype="complex128")
 
             self.load_bruker_proc()
-    
+
     # init ends
-        
-    
 
     def load_serial_file(self):
 
-
-        with open(self.ser, 'rb') as serial_file:
+        with open(self.ser, "rb") as serial_file:
             if self.dtypa == 0:
-                dtype_string = 'i4'
+                dtype_string = "i4"
             elif self.dtypa == 2:
-                dtype_string = 'i8'
+                dtype_string = "i8"
 
             if self.byte_order == 0:
-                self.raw_data = np.frombuffer(serial_file.read(), dtype='<'+dtype_string)
+                self.raw_data = np.frombuffer(
+                    serial_file.read(), dtype="<" + dtype_string
+                )
 
             elif self.byte_order == 1:
-                self.raw_data = np.frombuffer(serial_file.read(), dtype='>'+dtype_string)
+                self.raw_data = np.frombuffer(
+                    serial_file.read(), dtype=">" + dtype_string
+                )
 
             if len(self.raw_data) % 2 == 0:
                 self.raw_data_complex = make_complex(self.raw_data)
             else:
-                print('Raw data does not have even number of points, can not make complex')
+                print(
+                    "Raw data does not have even number of points, can not make complex"
+                )
                 self.valid = False
 
-        self.converted_data = np.zeros(int(self.td/2), dtype='complex128')
-
+        self.converted_data = np.zeros(int(self.td / 2), dtype="complex128")
 
         # lets convert the data
         if self.decim and self.dspfvs:
             if not self.grpdly:
                 self.grpdly = dd2g(self.dspfvs, self.decim)
-            #self.grpdly = np.floor(self.grpdly)
+            # self.grpdly = np.floor(self.grpdly)
             self.convert_bruker_1d()
         elif self.grpdly and not self.decim and not self.dspfvs:
             self.convert_bruker_1d()
 
         else:
-            print("Could not convert from Bruker data, incorrect or not found grpdly, dspfvs and/or decim")
+            print(
+                "Could not convert from Bruker data, incorrect or not found grpdly, dspfvs and/or decim"
+            )
             self.valid = False
 
         if self.verbose:
-            print('Converted Data Points structure is:', self.td)
+            print("Converted Data Points structure is:", self.td)
 
         serial_file.close()
-        
-        
+
     def convert_bruker_1d(self):
 
         # edit the number of points in first dimension after Bruker filter removal
         # we now count points in complex numbers as well
-        
+
         try:
-            #self.converted_data = remove_bruker_filter(make_complex(self.raw_data), self.grpdly)
-            self.converted_data = remove_bruker_delay(make_complex(self.raw_data), self.grpdly)
+            # self.converted_data = remove_bruker_filter(make_complex(self.raw_data), self.grpdly)
+            self.converted_data = remove_bruker_delay(
+                make_complex(self.raw_data), self.grpdly
+            )
             self.points = len(self.converted_data)
             if self.verbose:
-                print(f'After Bruker Delay Filter removal we have {self.points} points')
-        except Exception as e: 
+                print(f"After Bruker Delay Filter removal we have {self.points} points")
+        except Exception as e:
             print(e)
-            print('Could not convert bruker ser/fid file')
+            print("Could not convert bruker ser/fid file")
             self.valid = False
 
     def load_bruker_proc(self):
-        
+
         # loading the 1r and 1i files
-        with open(self.proc_dir+'/1r', 'rb') as real_proc:
+        with open(self.proc_dir + "/1r", "rb") as real_proc:
             if self.proc_byte_order == 0:
                 try:
-                    real = np.frombuffer(real_proc.read(), dtype='<i4')
+                    real = np.frombuffer(real_proc.read(), dtype="<i4")
                 except:
-                    
+
                     real = np.asarray([0])
             elif self.proc_byte_order == 1:
                 try:
-                    real = np.frombuffer(real_proc.read(), dtype='>i4')
+                    real = np.frombuffer(real_proc.read(), dtype=">i4")
                 except:
-                    
+
                     real = np.asarray([0])
-                
-        with open(self.proc_dir+'/1i', 'rb') as imag_proc:
+
+        with open(self.proc_dir + "/1i", "rb") as imag_proc:
             if self.proc_byte_order == 0:
                 try:
-                    imag = np.frombuffer(imag_proc.read(), dtype='<i4')
+                    imag = np.frombuffer(imag_proc.read(), dtype="<i4")
                 except:
                     imag = np.asarray([0])
             elif self.proc_byte_order == 1:
                 try:
-                    imag = np.frombuffer(imag_proc.read(), dtype='>i4')
+                    imag = np.frombuffer(imag_proc.read(), dtype=">i4")
                 except:
-                    
+
                     imag = np.asarray([0])
-                    
+
         if len(real) == 1 or len(imag) == 1:
             self.bruker_proc_data = None
-            print('Could not read Bruker Processed Data')
-            self.valid=False
+            print("Could not read Bruker Processed Data")
+            self.valid = False
         else:
             # store the data
-            self.bruker_proc_data = (real + 1.j*imag)
-        
-        
-        
-        
-        
-        
-
-            
-        
-
-        
-        
+            self.bruker_proc_data = real + 1.0j * imag
 
 
 class LINData2D:
+    def __init__(
+        self,
+        data_dir=".",
+        ser_file="ser",
+        points=None,
+        dim_status=None,
+        decim=None,
+        dspfvs=None,
+        grpdly=None,
+    ):
 
-    def __init__(self, data_dir='.', ser_file='ser', points=None,
-                 dim_status=None, decim=None, dspfvs=None, grpdly=None,
-                 ):
-
-        self.ac1 = os.path.join(data_dir, 'acqus')
-        self.ac2 = os.path.join(data_dir, 'acqu2s')
-        self.ser = os.path.join(data_dir, 'ser')
-        self.pp = os.path.join(data_dir, 'pulseprogram')
+        self.ac1 = os.path.join(data_dir, "acqus")
+        self.ac2 = os.path.join(data_dir, "acqu2s")
+        self.ser = os.path.join(data_dir, "ser")
+        self.pp = os.path.join(data_dir, "pulseprogram")
         self.ser = os.path.join(data_dir, ser_file)
         self.dir = data_dir
         self.acq = [0, 0]  # acquisition modes start as undefined
 
         # dictionary of acquisition modes for Bruker
-        self.acqDict = {0: 'undefined',
-                        1: 'qf',
-                        2: 'qsec',
-                        3: 'tppi',
-                        4: 'states',
-                        5: 'states-tppi',
-                        6: 'echo-antiecho',
-                        }
+        self.acqDict = {
+            0: "undefined",
+            1: "qf",
+            2: "qsec",
+            3: "tppi",
+            4: "states",
+            5: "states-tppi",
+            6: "echo-antiecho",
+        }
 
         # check if we are a Bruker 2D data set
-        if (os.path.isfile(self.ac1) and
-                os.path.isfile(self.ac2) and
-                os.path.isfile(self.ser) and
-                os.path.isfile(self.pp)):
+        if (
+            os.path.isfile(self.ac1)
+            and os.path.isfile(self.ac2)
+            and os.path.isfile(self.ser)
+            and os.path.isfile(self.pp)
+        ):
             self.valid = True
 
         else:
             self.valid = False
-            print('Data Directory does not seem to contain Bruker 2D Data')
+            print("Data Directory does not seem to contain Bruker 2D Data")
 
         p0 = p1 = 0  # we'll find these in the files
         dec = dsp = grp = 0  # we'll find these in the files
@@ -698,38 +865,53 @@ class LINData2D:
         elif dec != 0 and dsp != 0:
             grpdly = dd2g(dspfvs, decim)
         else:
-            print("problem with detecting / determining grpdly - needed for Bruker conversion")
+            print(
+                "problem with detecting / determining grpdly - needed for Bruker conversion"
+            )
             self.valid = False
 
-        print('Data Points structure is: ' + str(points))
-        print('DECIM= ' + str(decim) + ' DSPFVS= ' + str(dspfvs) + ' GRPDLY= ' + str(grpdly))
+        print("Data Points structure is: " + str(points))
+        print(
+            "DECIM= "
+            + str(decim)
+            + " DSPFVS= "
+            + str(dspfvs)
+            + " GRPDLY= "
+            + str(grpdly)
+        )
 
-        self.dim_status = ['t', 't'] if dim_status is None else dim_status
+        self.dim_status = ["t", "t"] if dim_status is None else dim_status
         if dim_status:
             if len(dim_status) != len(points):
-                raise ValueError("insanity: number of dimensions in 'points' and 'dim_status' don't match")
+                raise ValueError(
+                    "insanity: number of dimensions in 'points' and 'dim_status' don't match"
+                )
             else:
                 for i in range(len(dim_status)):
-                    if dim_status[i] not in ['t', 'f']:
+                    if dim_status[i] not in ["t", "f"]:
                         print(dim_status[i])
-                        raise ValueError("dimension domains must be 'f' - frequency or 't' - time")
+                        raise ValueError(
+                            "dimension domains must be 'f' - frequency or 't' - time"
+                        )
 
         # lets store the points
         self.points = points
 
         # now lets load in the bruker serial file
-        with open(self.ser, 'rb') as serial_file:
+        with open(self.ser, "rb") as serial_file:
             if self.byte_order == 0:
-                self.raw_data = np.frombuffer(serial_file.read(), dtype='<i4')
+                self.raw_data = np.frombuffer(serial_file.read(), dtype="<i4")
             elif self.byte_order == 1:
-                self.raw_data = np.frombuffer(serial_file.read(), dtype='>i4')
+                self.raw_data = np.frombuffer(serial_file.read(), dtype=">i4")
 
         # now reshape the data
-        self.raw_data = np.reshape(self.raw_data, np.asarray(self.points), order='F')
+        self.raw_data = np.reshape(self.raw_data, np.asarray(self.points), order="F")
 
         # TODO - set up some sort of sanity test
 
-        self.converted_data = np.zeros((int(self.points[0]/2), self.points[1]), dtype='complex128')
+        self.converted_data = np.zeros(
+            (int(self.points[0] / 2), self.points[1]), dtype="complex128"
+        )
 
         # lets convert the data
         if decim and dspfvs:
@@ -740,16 +922,17 @@ class LINData2D:
             self.convert_bruker_2d(grpdly)
 
         else:
-            print("Could not convert from Bruker data, incorrect or not found grpdly, dspfvs and/or decim")
+            print(
+                "Could not convert from Bruker data, incorrect or not found grpdly, dspfvs and/or decim"
+            )
 
-        print('Converted Data Points structure is:', self.points)
+        print("Converted Data Points structure is:", self.points)
 
         self.phases = (0, 0)
         self.fp_corrections = (0.5, 0.5)
-        self.windows = ('sb', 'sb')
+        self.windows = ("sb", "sb")
         self.windows_p = (0.5, 0.5)
         self.zero_fill = (1.0, 1.0)
-
 
         self.processed_data = []  # this will be filled out in proc method
         self.ft_points = []
@@ -758,55 +941,65 @@ class LINData2D:
 
         # edit the number of points in first dimension after Bruker filter removal
         # we now count points in complex numbers as well
-        self.points[0] = len(remove_bruker_delay(make_complex(self.raw_data[:, 0]), grpdly))
+        self.points[0] = len(
+            remove_bruker_delay(make_complex(self.raw_data[:, 0]), grpdly)
+        )
 
         # convert the data
-        for i in range(self.points[1]):  # inner loop for second dimension points from dataFID
+        for i in range(
+            self.points[1]
+        ):  # inner loop for second dimension points from dataFID
             fid = remove_bruker_delay(make_complex(self.raw_data[:, i]), grpdly)
-            self.converted_data[0:len(fid), i] = fid
+            self.converted_data[0 : len(fid), i] = fid
 
         self.converted_data = self.converted_data[
-                              0:self.points[0],
-                              0:self.points[1],
-                              ]
+            0 : self.points[0],
+            0 : self.points[1],
+        ]
 
         if self.acq[1] == 6:  # Rance Kay Processing needed
-            print('Echo-AntiEcho Detected in T1 - dealing with it...')
+            print("Echo-AntiEcho Detected in T1 - dealing with it...")
             for i in range(0, self.points[1], 2):
                 a = self.converted_data[:, i]
-                b = self.converted_data[:, i+1]
+                b = self.converted_data[:, i + 1]
                 c = a + b
                 d = a - b
-                self.converted_data[:, i] = c * np.exp(1.j * (90 / 180) * np.pi)
-                self.converted_data[:, i+1] = d * np.exp(1.j * (180 / 180) * np.pi)
+                self.converted_data[:, i] = c * np.exp(1.0j * (90 / 180) * np.pi)
+                self.converted_data[:, i + 1] = d * np.exp(1.0j * (180 / 180) * np.pi)
 
         self.raw_data = self.converted_data  # clean up memory a little
 
-    def proc_t2(self, t2_ss=None, phase=0, c=1.0, window='sb', window_p=0.5):
+    def proc_t2(self, t2_ss=None, phase=0, c=1.0, window="sb", window_p=0.5):
 
         self.processed_data[0, :] = self.processed_data[0, :] * c
 
         for i in range(self.ft_points[1]):
             fid = self.processed_data[:, i]
 
-            if t2_ss == 'butter':
+            if t2_ss == "butter":
                 fid = butter_highpass_filter(fid, 0.01, 0.1, order=1)
 
-            elif t2_ss == 'poly':
+            elif t2_ss == "poly":
                 co_ef = np.polynomial.polynomial.polyfit(np.arange(len(fid)), fid, 5)
                 time_points = np.arange(len(fid))
-                polyline = sum(co_ef[iii] * time_points ** iii for iii in range(len(co_ef)))
+                polyline = sum(
+                    co_ef[iii] * time_points ** iii for iii in range(len(co_ef))
+                )
                 fid = fid - polyline
 
-            fid = fid * window_function(points=len(fid),
-                                        window=window,
-                                        window_p=window_p,
-                                        )
-            self.processed_data[0:len(fid), i] = fid
+            fid = fid * window_function(
+                points=len(fid),
+                window=window,
+                window_p=window_p,
+            )
+            self.processed_data[0 : len(fid), i] = fid
             self.processed_data[:, i] = np.fft.fftshift(
-                np.fft.fft(self.processed_data[:, i] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+                np.fft.fft(
+                    self.processed_data[:, i] * np.exp(1.0j * (phase / 180) * np.pi)
+                )
+            )[::-1]
 
-    def proc_t1(self, phase=0, c=1.0, window='sb', window_p=0.5):
+    def proc_t1(self, phase=0, c=1.0, window="sb", window_p=0.5):
 
         self.processed_data[:, 0] = self.processed_data[:, 0] * c
         self.processed_data[:, 1] = self.processed_data[:, 1] * c
@@ -814,26 +1007,29 @@ class LINData2D:
         for i in range(self.ft_points[0]):
             fid_r = np.real(self.processed_data[i, ::2])
             fid_i = np.real(self.processed_data[i, 1::2])
-            fid = np.ravel((fid_r, fid_i), order='F')
+            fid = np.ravel((fid_r, fid_i), order="F")
             fid = make_complex(fid)
-            fid = fid * window_function(points=len(fid),
-                                        window=window,
-                                        window_p=window_p
-                                        )
+            fid = fid * window_function(
+                points=len(fid), window=window, window_p=window_p
+            )
 
-            self.processed_data[i, 0:len(fid)] = fid
-            self.processed_data[i, len(fid):] = np.zeros(self.ft_points[1]-len(fid))
+            self.processed_data[i, 0 : len(fid)] = fid
+            self.processed_data[i, len(fid) :] = np.zeros(self.ft_points[1] - len(fid))
 
             if self.acq[1] != 5:
                 self.processed_data[i, :] = np.fft.fftshift(
-                    np.fft.fft(self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+                    np.fft.fft(
+                        self.processed_data[i, :] * np.exp(1.0j * (phase / 180) * np.pi)
+                    )
+                )[::-1]
 
             else:
                 self.processed_data[i, :] = np.fft.fft(
-                    self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
+                    self.processed_data[i, :] * np.exp(1.0j * (phase / 180) * np.pi)
+                )[::-1]
 
     # hypercomplex processing with imaginary parts
-    def proc_t1_ii(self, phase=0, c=1.0, window='sb', window_p=0.5):
+    def proc_t1_ii(self, phase=0, c=1.0, window="sb", window_p=0.5):
 
         self.processed_data[:, 0] = self.processed_data[:, 0] * c
         self.processed_data[:, 1] = self.processed_data[:, 1] * c
@@ -841,82 +1037,55 @@ class LINData2D:
         for i in range(self.ft_points[0]):
             fid_r = np.imag(self.processed_data[i, ::2])
             fid_i = np.imag(self.processed_data[i, 1::2])
-            fid = np.ravel((fid_r, fid_i), order='F')
+            fid = np.ravel((fid_r, fid_i), order="F")
             fid = make_complex(fid)
-            fid = fid * window_function(points=len(fid),
-                                        window=window,
-                                        window_p=window_p
-                                        )
+            fid = fid * window_function(
+                points=len(fid), window=window, window_p=window_p
+            )
 
-            self.processed_data[i, 0:len(fid)] = fid
-            self.processed_data[i, len(fid):] = np.zeros(self.ft_points[1]-len(fid))
+            self.processed_data[i, 0 : len(fid)] = fid
+            self.processed_data[i, len(fid) :] = np.zeros(self.ft_points[1] - len(fid))
 
             if self.acq[1] != 5:
                 self.processed_data[i, :] = np.fft.fftshift(
-                    np.fft.fft(self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+                    np.fft.fft(
+                        self.processed_data[i, :] * np.exp(1.0j * (phase / 180) * np.pi)
+                    )
+                )[::-1]
 
             else:
                 self.processed_data[i, :] = np.fft.fft(
-                    self.processed_data[i, :] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
+                    self.processed_data[i, :] * np.exp(1.0j * (phase / 180) * np.pi)
+                )[::-1]
 
-    def proc(self, phases=(0, 0),
-             t2_ss=None,
-             fp_corrections=(0.5, 0.5),
-             windows=('sb', 'sb'),
-             windows_p=(0.5, 0.5),
-             zero_fill=(1.0, 1.0),
-             ):
+    def proc(
+        self,
+        phases=(0, 0),
+        t2_ss=None,
+        fp_corrections=(0.5, 0.5),
+        windows=("sb", "sb"),
+        windows_p=(0.5, 0.5),
+        zero_fill=(1.0, 1.0),
+    ):
 
         t1_ac_mode = int(self.acq[1])
-        if t1_ac_mode >= 3 or t1_ac_mode <= 6:  # hypercomplex data. T1 points is really half
+        if (
+            t1_ac_mode >= 3 or t1_ac_mode <= 6
+        ):  # hypercomplex data. T1 points is really half
             points_t2 = int(self.points[1] / 2)
         else:
             points_t2 = self.points[1]
 
-        self.ft_points = (int(2 ** (next_fourier_number(self.points[0]) + zero_fill[0])),
-                          int(2 ** (next_fourier_number(points_t2) + zero_fill[1])),
-                          )
+        self.ft_points = (
+            int(2 ** (next_fourier_number(self.points[0]) + zero_fill[0])),
+            int(2 ** (next_fourier_number(points_t2) + zero_fill[1])),
+        )
         print(self.ft_points)
-        self.processed_data = np.zeros(self.ft_points, dtype='complex128')
+        self.processed_data = np.zeros(self.ft_points, dtype="complex128")
 
-        self.processed_data[0:self.points[0], 0:self.points[1]] = self.converted_data
-
-        self.proc_t2(t2_ss=t2_ss,
-                     phase=phases[0],
-                     c=fp_corrections[0],
-                     window=windows[0],
-                     window_p=windows_p[0],
-                     )
-
-        self.proc_t1(phase=phases[1],
-                     c=fp_corrections[1],
-                     window=windows[1],
-                     window_p=windows_p[1],
-                     )
-
-    # this is an test form of processing - should be deleted eventually
-    def proc_ii(self,
-                t2_ss=None,
-                phases=(0, 0),
-                fp_corrections=(0.5, 0.5),
-                windows=('sb', 'sb'),
-                windows_p=(0.5, 0.5),
-                zero_fill=(1.0, 1.0),
-                ):
-
-        t1_ac_mode = int(self.acq[1])
-        if t1_ac_mode >= 3 or t1_ac_mode <= 6:  # hypercomplex data. T1 points is really half
-            points_t2 = int(self.points[1] / 2)
-        else:
-            points_t2 = self.points[1]
-
-        self.ft_points = (int(2 ** (next_fourier_number(self.points[0]) + zero_fill[0])),
-                          int(2 ** (next_fourier_number(points_t2) + zero_fill[1])),
-                          )
-        print(self.ft_points)
-        self.processed_data = np.zeros(self.ft_points, dtype='complex128')
-
-        self.processed_data[0:self.points[0], 0:self.points[1]] = self.converted_data
+        self.processed_data[
+            0 : self.points[0], 0 : self.points[1]
+        ] = self.converted_data
 
         self.proc_t2(
             t2_ss=t2_ss,
@@ -924,52 +1093,106 @@ class LINData2D:
             c=fp_corrections[0],
             window=windows[0],
             window_p=windows_p[0],
-            )
+        )
+
+        self.proc_t1(
+            phase=phases[1],
+            c=fp_corrections[1],
+            window=windows[1],
+            window_p=windows_p[1],
+        )
+
+    # this is an test form of processing - should be deleted eventually
+    def proc_ii(
+        self,
+        t2_ss=None,
+        phases=(0, 0),
+        fp_corrections=(0.5, 0.5),
+        windows=("sb", "sb"),
+        windows_p=(0.5, 0.5),
+        zero_fill=(1.0, 1.0),
+    ):
+
+        t1_ac_mode = int(self.acq[1])
+        if (
+            t1_ac_mode >= 3 or t1_ac_mode <= 6
+        ):  # hypercomplex data. T1 points is really half
+            points_t2 = int(self.points[1] / 2)
+        else:
+            points_t2 = self.points[1]
+
+        self.ft_points = (
+            int(2 ** (next_fourier_number(self.points[0]) + zero_fill[0])),
+            int(2 ** (next_fourier_number(points_t2) + zero_fill[1])),
+        )
+        print(self.ft_points)
+        self.processed_data = np.zeros(self.ft_points, dtype="complex128")
+
+        self.processed_data[
+            0 : self.points[0], 0 : self.points[1]
+        ] = self.converted_data
+
+        self.proc_t2(
+            t2_ss=t2_ss,
+            phase=phases[0],
+            c=fp_corrections[0],
+            window=windows[0],
+            window_p=windows_p[0],
+        )
 
         self.proc_t1_ii(
             phase=phases[1],
             c=fp_corrections[1],
             window=windows[1],
             window_p=windows_p[1],
-            )
+        )
 
 
 class LINData3D:
+    def __init__(
+        self,
+        data_dir=".",
+        ser_file="ser",
+        points=None,
+        dim_status=None,
+        decim=None,
+        dspfvs=None,
+        grpdly=None,
+    ):
 
-    def __init__(self, data_dir='.', ser_file='ser', points=None,
-                 dim_status=None, decim=None, dspfvs=None, grpdly=None,
-                 ):
-
-        self.ac1 = os.path.join(data_dir, 'acqus')
-        self.ac2 = os.path.join(data_dir, 'acqu2s')
-        self.ac3 = os.path.join(data_dir, 'acqu3s')
-        self.ser = os.path.join(data_dir, 'ser')
-        self.pp = os.path.join(data_dir, 'pulseprogram')
+        self.ac1 = os.path.join(data_dir, "acqus")
+        self.ac2 = os.path.join(data_dir, "acqu2s")
+        self.ac3 = os.path.join(data_dir, "acqu3s")
+        self.ser = os.path.join(data_dir, "ser")
+        self.pp = os.path.join(data_dir, "pulseprogram")
         self.ser = os.path.join(data_dir, ser_file)
         self.dir = data_dir
         self.acq = [0, 0, 0]  # acquisition modes start as undefined
 
         # dictionary of acquisition modes for Bruker
-        self.acqDict = {0: 'undefined',
-                        1: 'qf',
-                        2: 'qsec',
-                        3: 'tppi',
-                        4: 'states',
-                        5: 'states-tppi',
-                        6: 'echo-antiecho',
-                        }
+        self.acqDict = {
+            0: "undefined",
+            1: "qf",
+            2: "qsec",
+            3: "tppi",
+            4: "states",
+            5: "states-tppi",
+            6: "echo-antiecho",
+        }
 
         # check if we are a Bruker 2D data set
-        if (os.path.isfile(self.ac1) and
-                os.path.isfile(self.ac2) and
-                os.path.isfile(self.ac3) and
-                os.path.isfile(self.ser) and
-                os.path.isfile(self.pp)):
+        if (
+            os.path.isfile(self.ac1)
+            and os.path.isfile(self.ac2)
+            and os.path.isfile(self.ac3)
+            and os.path.isfile(self.ser)
+            and os.path.isfile(self.pp)
+        ):
             self.valid = True
 
         else:
             self.valid = False
-            print('Data Directory does not seem to contain Bruker 3D Data')
+            print("Data Directory does not seem to contain Bruker 3D Data")
 
         p0 = p1 = p2 = 0  # we'll find these in the files
         dec = dsp = grp = 0  # we'll find these in the files
@@ -1030,38 +1253,54 @@ class LINData3D:
         elif dec != 0 and dsp != 0:
             grpdly = dd2g(dspfvs, decim)
         else:
-            print("problem with detecting / determining grpdly - needed for Bruker conversion")
+            print(
+                "problem with detecting / determining grpdly - needed for Bruker conversion"
+            )
             self.valid = False
 
-        print('Data Points structure is: ' + str(points))
-        print('DECIM= ' + str(decim) + ' DSPFVS= ' + str(dspfvs) + ' GRPDLY= ' + str(grpdly))
+        print("Data Points structure is: " + str(points))
+        print(
+            "DECIM= "
+            + str(decim)
+            + " DSPFVS= "
+            + str(dspfvs)
+            + " GRPDLY= "
+            + str(grpdly)
+        )
 
-        self.dim_status = ['t', 't', 't'] if dim_status is None else dim_status
+        self.dim_status = ["t", "t", "t"] if dim_status is None else dim_status
         if dim_status:
             if len(dim_status) != len(points):
-                raise ValueError("insanity: number of dimensions in 'points' and 'dim_status' don't match")
+                raise ValueError(
+                    "insanity: number of dimensions in 'points' and 'dim_status' don't match"
+                )
             else:
                 for i in range(len(dim_status)):
-                    if dim_status[i] not in ['t', 'f']:
+                    if dim_status[i] not in ["t", "f"]:
                         print(dim_status[i])
-                        raise ValueError("dimension domains must be 'f' - frequency or 't' - time")
+                        raise ValueError(
+                            "dimension domains must be 'f' - frequency or 't' - time"
+                        )
 
         # lets store the points to the class instance
         self.points = points
 
         # now lets load in the bruker serial file
-        with open(self.ser, 'rb') as serial_file:
+        with open(self.ser, "rb") as serial_file:
             if self.byte_order == 0:
-                self.raw_data = np.frombuffer(serial_file.read(), dtype='<i4')
+                self.raw_data = np.frombuffer(serial_file.read(), dtype="<i4")
             elif self.byte_order == 1:
-                self.raw_data = np.frombuffer(serial_file.read(), dtype='>i4')
+                self.raw_data = np.frombuffer(serial_file.read(), dtype=">i4")
 
         # now reshape the data
-        self.raw_data = np.reshape(self.raw_data, np.asarray(self.points), order='F')
+        self.raw_data = np.reshape(self.raw_data, np.asarray(self.points), order="F")
 
         # TODO - set up some sort of sanity test
 
-        self.converted_data = np.zeros((int(self.points[0]/2), self.points[1], self.points[2]), dtype='complex128')
+        self.converted_data = np.zeros(
+            (int(self.points[0] / 2), self.points[1], self.points[2]),
+            dtype="complex128",
+        )
 
         # lets convert the data
         if decim and dspfvs:
@@ -1072,13 +1311,15 @@ class LINData3D:
             self.convert_bruker_3d(grpdly)
 
         else:
-            print("Could not convert from Bruker data, incorrect or not found grpdly, dspfvs and/or decim")
+            print(
+                "Could not convert from Bruker data, incorrect or not found grpdly, dspfvs and/or decim"
+            )
 
-        print('Converted Data Points structure is:', self.points)
+        print("Converted Data Points structure is:", self.points)
 
         self.phases = (0, 0, 0)
         self.fp_corrections = (0.5, 0.5, 0.5)
-        self.windows = ('sb', 'sb', 'sb')
+        self.windows = ("sb", "sb", "sb")
         self.windows_p = (0.5, 0.5, 0.5)
         self.zero_fill = (1.0, 1.0, 1.0)
 
@@ -1089,211 +1330,281 @@ class LINData3D:
 
         # edit the number of points in first dimension after Bruker filter removal
         # we now count points in complex numbers as well
-        self.points[0] = len(remove_bruker_delay(make_complex(self.raw_data[:, 0, 0]), grpdly))
-        for ii in range(self.points[2]):  # outer loop for third dimension points from dataFID
-            for i in range(self.points[1]):  # inner loop for second dimension points from dataFID
+        self.points[0] = len(
+            remove_bruker_delay(make_complex(self.raw_data[:, 0, 0]), grpdly)
+        )
+        for ii in range(
+            self.points[2]
+        ):  # outer loop for third dimension points from dataFID
+            for i in range(
+                self.points[1]
+            ):  # inner loop for second dimension points from dataFID
                 fid = remove_bruker_delay(make_complex(self.raw_data[:, i, ii]), grpdly)
-                self.converted_data[0:len(fid), i, ii] = fid
+                self.converted_data[0 : len(fid), i, ii] = fid
 
         self.converted_data = self.converted_data[
-                              0:self.points[0],
-                              0:self.points[1],
-                              0:self.points[2],
-                              ]
+            0 : self.points[0],
+            0 : self.points[1],
+            0 : self.points[2],
+        ]
         self.raw_data = self.converted_data  # clean up memory a little
 
         if self.acq[1] == 6:  # Rance Kay Processing needed
-            print('Echo-AntiEcho Detected in T2 - dealing with it...')
+            print("Echo-AntiEcho Detected in T2 - dealing with it...")
             for i in range(0, self.points[1], 2):
                 for ii in range(self.points[2]):
                     a = self.converted_data[:, i, ii]
-                    b = self.converted_data[:, i+1, ii]
+                    b = self.converted_data[:, i + 1, ii]
                     c = a + b
                     d = a - b
-                    self.converted_data[:, i, ii] = c * np.exp(1.j * (90 / 180) * np.pi)
-                    self.converted_data[:, i+1, ii] = d * np.exp(1.j * (180 / 180) * np.pi)
+                    self.converted_data[:, i, ii] = c * np.exp(
+                        1.0j * (90 / 180) * np.pi
+                    )
+                    self.converted_data[:, i + 1, ii] = d * np.exp(
+                        1.0j * (180 / 180) * np.pi
+                    )
 
         if self.acq[2] == 6:  # Rance Kay Processing needed
-            print('Echo-AntiEcho Detected in T1 - dealing with it...')
+            print("Echo-AntiEcho Detected in T1 - dealing with it...")
             for i in range(0, self.points[2], 2):
                 for ii in range(self.points[1]):
                     a = self.converted_data[:, ii, i]
-                    b = self.converted_data[:, ii, i+1]
+                    b = self.converted_data[:, ii, i + 1]
                     c = a + b
                     d = a - b
-                    self.converted_data[:, ii, i] = c * np.exp(1.j * (90 / 180) * np.pi)
-                    self.converted_data[:, ii, i+1] = d * np.exp(1.j * (180 / 180) * np.pi)
+                    self.converted_data[:, ii, i] = c * np.exp(
+                        1.0j * (90 / 180) * np.pi
+                    )
+                    self.converted_data[:, ii, i + 1] = d * np.exp(
+                        1.0j * (180 / 180) * np.pi
+                    )
 
         self.raw_data = self.converted_data  # clean up memory a little
 
-    def proc_t3(self, phase=0, t3_ss=None, c=1.0, window='sb', window_p=0.5):
+    def proc_t3(self, phase=0, t3_ss=None, c=1.0, window="sb", window_p=0.5):
 
         self.processed_data[0, :, :] = self.processed_data[0, :, :] * c
-        window = window_function(points=self.points[0],
-                                 window=window,
-                                 window_p=window_p,
-                                 )
+        window = window_function(
+            points=self.points[0],
+            window=window,
+            window_p=window_p,
+        )
         for i in range(self.ft_points[2]):
             for ii in range(self.ft_points[1]):
-                fid = self.processed_data[0:self.points[0], ii, i]
+                fid = self.processed_data[0 : self.points[0], ii, i]
 
-                if t3_ss == 'butter':
+                if t3_ss == "butter":
                     fid = butter_highpass_filter(fid, 0.01, 0.1, order=1)
 
-                elif t3_ss == 'poly':
-                    co_ef = np.polynomial.polynomial.polyfit(np.arange(len(fid)),  fid,  5)
+                elif t3_ss == "poly":
+                    co_ef = np.polynomial.polynomial.polyfit(
+                        np.arange(len(fid)), fid, 5
+                    )
                     time_points = np.arange(len(fid))
-                    polyline = sum(co_ef[iii] * time_points ** iii for iii in range(len(co_ef)))
+                    polyline = sum(
+                        co_ef[iii] * time_points ** iii for iii in range(len(co_ef))
+                    )
                     fid = fid - polyline
 
                 # fid[0:len(window)] = fid[0:len(window)] * window
                 fid = fid * window
 
-                self.processed_data[0:self.points[0], ii, i] = fid
+                self.processed_data[0 : self.points[0], ii, i] = fid
                 self.processed_data[:, ii, i] = np.fft.fftshift(
-                    np.fft.fft(self.processed_data[:, ii, i] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+                    np.fft.fft(
+                        self.processed_data[:, ii, i]
+                        * np.exp(1.0j * (phase / 180) * np.pi)
+                    )
+                )[::-1]
 
-    def proc_t2(self, phase=0, c=1.0, window='sb', window_p=0.5):
+    def proc_t2(self, phase=0, c=1.0, window="sb", window_p=0.5):
 
         self.processed_data[:, 0, :] = self.processed_data[:, 0, :] * c
         self.processed_data[:, 1, :] = self.processed_data[:, 1, :] * c
 
-        window = window_function(points=self.points[1]/2,  # hypercomplex so halve this
-                                 window=window,
-                                 window_p=window_p
-                                 )
+        window = window_function(
+            points=self.points[1] / 2,  # hypercomplex so halve this
+            window=window,
+            window_p=window_p,
+        )
 
         for i in range(self.ft_points[2]):
             for ii in range(self.ft_points[0]):
-                fid = np.real(self.processed_data[ii, :int(self.points[1]):2, i]) + \
-                  1.j*np.real(self.processed_data[ii, 1:int(self.points[1]):2, i])
+                fid = np.real(
+                    self.processed_data[ii, : int(self.points[1]) : 2, i]
+                ) + 1.0j * np.real(
+                    self.processed_data[ii, 1 : int(self.points[1]) : 2, i]
+                )
                 # fid[0:int(self.points[1]/2)] = fid[0:int(self.points[1]/2)] * window
                 fid = fid * window
-                self.processed_data[ii, 0:len(fid), i] = fid
-                self.processed_data[ii, len(fid):, i] = np.zeros(self.ft_points[1]-len(fid))
+                self.processed_data[ii, 0 : len(fid), i] = fid
+                self.processed_data[ii, len(fid) :, i] = np.zeros(
+                    self.ft_points[1] - len(fid)
+                )
 
                 if self.acq[1] not in [5, 3]:
                     self.processed_data[ii, :, i] = fftshift(
-                        fft(self.processed_data[ii, :, i] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+                        fft(
+                            self.processed_data[ii, :, i]
+                            * np.exp(1.0j * (phase / 180) * np.pi)
+                        )
+                    )[::-1]
 
                 else:
                     self.processed_data[ii, :, i] = fft(
-                        self.processed_data[ii, :, i] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
+                        self.processed_data[ii, :, i]
+                        * np.exp(1.0j * (phase / 180) * np.pi)
+                    )[::-1]
 
-    def proc_t1(self, phase=0, c=1.0, window='sb', window_p=0.5):
+    def proc_t1(self, phase=0, c=1.0, window="sb", window_p=0.5):
 
         self.processed_data[:, :, 0] = self.processed_data[:, :, 0] * c
         self.processed_data[:, :, 1] = self.processed_data[:, :, 1] * c
-        window = window_function(points=self.points[2]/2,  # hypercomplex so halve this
-                                 window=window,
-                                 window_p=window_p
-                                 )
+        window = window_function(
+            points=self.points[2] / 2,  # hypercomplex so halve this
+            window=window,
+            window_p=window_p,
+        )
         for i in range(self.ft_points[1]):
             for ii in range(self.ft_points[0]):
-                fid = np.real(self.processed_data[ii, i, :int(self.points[2]):2]) + \
-                  1.j*np.real(self.processed_data[ii, i, 1:int(self.points[2]):2])
+                fid = np.real(
+                    self.processed_data[ii, i, : int(self.points[2]) : 2]
+                ) + 1.0j * np.real(
+                    self.processed_data[ii, i, 1 : int(self.points[2]) : 2]
+                )
                 # fid[0:int(self.points[2] / 2)] = fid[0:int(self.points[2] / 2)] * window
                 fid = fid * window
-                self.processed_data[ii, i, 0:len(fid)] = fid
-                self.processed_data[ii, i, len(fid):] = np.zeros(self.ft_points[2]-len(fid))
+                self.processed_data[ii, i, 0 : len(fid)] = fid
+                self.processed_data[ii, i, len(fid) :] = np.zeros(
+                    self.ft_points[2] - len(fid)
+                )
 
                 if self.acq[2] in [5, 3]:
                     self.processed_data[ii, i, :] = fft(
-                        self.processed_data[ii, i, :] * np.exp(1.j * (phase / 180) * np.pi))[::-1]
+                        self.processed_data[ii, i, :]
+                        * np.exp(1.0j * (phase / 180) * np.pi)
+                    )[::-1]
 
                 else:  # states tppi or tppi - don't fftshift
-                    self.processed_data[ii, i, :] = fftshift(fft(
-                        self.processed_data[ii, i, :] * np.exp(1.j * (phase / 180) * np.pi)))[::-1]
+                    self.processed_data[ii, i, :] = fftshift(
+                        fft(
+                            self.processed_data[ii, i, :]
+                            * np.exp(1.0j * (phase / 180) * np.pi)
+                        )
+                    )[::-1]
 
-    def proc(self, phases=(0, 0, 0),
-             t3_ss=None,
-             fp_corrections=(0.5, 0.5, 0.5),
-             windows=('sb', 'sb', 'sb'),
-             windows_p=(0.5, 0.5, 0.5),
-             zero_fill=(1.0, 1.0, 1.0),
-             ):
+    def proc(
+        self,
+        phases=(0, 0, 0),
+        t3_ss=None,
+        fp_corrections=(0.5, 0.5, 0.5),
+        windows=("sb", "sb", "sb"),
+        windows_p=(0.5, 0.5, 0.5),
+        zero_fill=(1.0, 1.0, 1.0),
+    ):
 
         t1_ac_mode = int(self.acq[1])
-        if t1_ac_mode >= 3 or t1_ac_mode <= 6:  # hypercomplex data. T2 points is really half
+        if (
+            t1_ac_mode >= 3 or t1_ac_mode <= 6
+        ):  # hypercomplex data. T2 points is really half
             points_t2 = int(self.points[1] / 2)
         else:
             points_t2 = self.points[1]
 
         t1_ac_mode = int(self.acq[2])
-        if t1_ac_mode >= 3 or t1_ac_mode <= 6:  # hypercomplex data. T1 points is really half
+        if (
+            t1_ac_mode >= 3 or t1_ac_mode <= 6
+        ):  # hypercomplex data. T1 points is really half
             points_t1 = int(self.points[2] / 2)
         else:
             points_t1 = self.points[2]
 
-        self.ft_points = (int(2 ** (next_fourier_number(self.points[0]) + zero_fill[0])),
-                          int(2 ** (next_fourier_number(points_t2) + zero_fill[1])),
-                          int(2 ** (next_fourier_number(points_t1) + zero_fill[2])),
-                          )
+        self.ft_points = (
+            int(2 ** (next_fourier_number(self.points[0]) + zero_fill[0])),
+            int(2 ** (next_fourier_number(points_t2) + zero_fill[1])),
+            int(2 ** (next_fourier_number(points_t1) + zero_fill[2])),
+        )
         print(self.ft_points)
-        self.processed_data = np.zeros(self.ft_points, dtype='complex128')
+        self.processed_data = np.zeros(self.ft_points, dtype="complex128")
 
-        self.processed_data[0:self.points[0], 0:self.points[1], 0:self.points[2]] = self.converted_data[0:self.points[0], 0:self.points[1], 0:self.points[2]]
+        self.processed_data[
+            0 : self.points[0], 0 : self.points[1], 0 : self.points[2]
+        ] = self.converted_data[
+            0 : self.points[0], 0 : self.points[1], 0 : self.points[2]
+        ]
 
         print(colorama.Fore.RED + "Processing t3", flush=True)
-        self.proc_t3(phase=phases[0],
-                     t3_ss=t3_ss,
-                     c=fp_corrections[0],
-                     window=windows[0],
-                     window_p=windows_p[0],
-                     )
-        print(colorama.Fore.RED + 'Processing t2', flush=True)
-        self.proc_t2(phase=phases[1],
-                     c=fp_corrections[1],
-                     window=windows[1],
-                     window_p=windows_p[1],
-                     )
-        print(colorama.Fore.RED + 'Processing t1', flush=True)
-        self.proc_t1(phase=phases[2],
-                     c=fp_corrections[2],
-                     window=windows[2],
-                     window_p=windows_p[2],
-                     )
+        self.proc_t3(
+            phase=phases[0],
+            t3_ss=t3_ss,
+            c=fp_corrections[0],
+            window=windows[0],
+            window_p=windows_p[0],
+        )
+        print(colorama.Fore.RED + "Processing t2", flush=True)
+        self.proc_t2(
+            phase=phases[1],
+            c=fp_corrections[1],
+            window=windows[1],
+            window_p=windows_p[1],
+        )
+        print(colorama.Fore.RED + "Processing t1", flush=True)
+        self.proc_t1(
+            phase=phases[2],
+            c=fp_corrections[2],
+            window=windows[2],
+            window_p=windows_p[2],
+        )
 
 
 # define class for NUS data - this includes the NUS schedule and assumes Bruker ser file
 # the object contains the entire serial file data and the NUS schedule
 # points_in_fid is the total (R+I) points in the direct FIDs
 class NUSData3D:
+    def __init__(
+        self,
+        data_dir=".",
+        ser_file="ser",
+        nus_list="nuslist",
+        points=None,
+        decim=None,
+        dspfvs=None,
+        grpdly=None,
+    ):
 
-    def __init__(self, data_dir='.', ser_file='ser', nus_list='nuslist', points=None, decim=None, dspfvs=None,
-                 grpdly=None):
-
-        self.ac1 = os.path.join(data_dir, 'acqus')
-        self.ac2 = os.path.join(data_dir, 'acqu2s')
-        self.ac3 = os.path.join(data_dir, 'acqu3s')
-        self.ser = os.path.join(data_dir, 'ser')
-        self.pp = os.path.join(data_dir, 'pulseprogram')
+        self.ac1 = os.path.join(data_dir, "acqus")
+        self.ac2 = os.path.join(data_dir, "acqu2s")
+        self.ac3 = os.path.join(data_dir, "acqu3s")
+        self.ser = os.path.join(data_dir, "ser")
+        self.pp = os.path.join(data_dir, "pulseprogram")
         self.ser = os.path.join(data_dir, ser_file)
         self.dir = data_dir
         self.acq = [0, 0, 0]  # acquisition modes start as undefined
 
         # dictionary of acquisition modes for Bruker
-        self.acqDict = {0: 'undefined',
-                        1: 'qf',
-                        2: 'qsec',
-                        3: 'tppi',
-                        4: 'states',
-                        5: 'states-tppi',
-                        6: 'echo-antiecho',
-                        }
+        self.acqDict = {
+            0: "undefined",
+            1: "qf",
+            2: "qsec",
+            3: "tppi",
+            4: "states",
+            5: "states-tppi",
+            6: "echo-antiecho",
+        }
 
         # check if we are a Bruker 2D data set
-        if (os.path.isfile(self.ac1) and
-            os.path.isfile(self.ac2) and
-            os.path.isfile(self.ac3) and
-            os.path.isfile(self.ser) and
-            os.path.isfile(self.pp)
+        if (
+            os.path.isfile(self.ac1)
+            and os.path.isfile(self.ac2)
+            and os.path.isfile(self.ac3)
+            and os.path.isfile(self.ser)
+            and os.path.isfile(self.pp)
         ):
             self.valid = True
 
         else:
             self.valid = False
-            print('Data Directory does not seem to contain Bruker 3D Data')
+            print("Data Directory does not seem to contain Bruker 3D Data")
 
         p0 = p1 = p2 = 0  # we'll find these in the files
         dec = dsp = grp = 0  # we'll find these in the files
@@ -1318,16 +1629,23 @@ class NUSData3D:
         if not dspfvs:
             dspfvs = dsp
         if not grpdly:
-            grpdly = grp if 'grp' in locals() else dd2g(dspfvs, decim)
+            grpdly = grp if "grp" in locals() else dd2g(dspfvs, decim)
         points_in_direct_fid = p0 * 2
-        print('Number of R+I points: ' + str(points_in_direct_fid))
-        print('DECIM= ' + str(decim) + ' DSPFVS= ' + str(dspfvs) + ' GRPDLY= ' + str(grpdly))
+        print("Number of R+I points: " + str(points_in_direct_fid))
+        print(
+            "DECIM= "
+            + str(decim)
+            + " DSPFVS= "
+            + str(dspfvs)
+            + " GRPDLY= "
+            + str(grpdly)
+        )
 
         # we need ot know how many points are in the direct dimension
         self.pointsInDirectFid = points_in_direct_fid
 
         # lets open and parse the nuslist file - or sched file - of samples taken
-        with open(data_dir + '/' + nus_list, 'r') as nuslist:
+        with open(data_dir + "/" + nus_list, "r") as nuslist:
             lines = nuslist.readlines()
             nuslist = []
             for line in lines:
@@ -1346,45 +1664,54 @@ class NUSData3D:
 
         # lets load in the actual serial data
 
-        with open(data_dir + '/' + ser_file, 'rb') as serial_file:
-            self.nusData = np.frombuffer(serial_file.read(), dtype='<i4')
+        with open(data_dir + "/" + ser_file, "rb") as serial_file:
+            self.nusData = np.frombuffer(serial_file.read(), dtype="<i4")
 
         # bruker data is four bytes per point so
         # len(nus_data) should equal 4 * 2**self.nus_dimensions * self.nus_points * self.points_in_direct_fid
-        if 4 * 2 ** self.nusDimensions * self.nusPoints * self.pointsInDirectFid == len(self.nusData):
+        if (
+            4 * 2 ** self.nusDimensions * self.nusPoints * self.pointsInDirectFid
+            == len(self.nusData)
+        ):
             self.sane = True
         else:
             self.sane = False
 
         # reshape the data
-        self.nusData = np.reshape(self.nusData, (self.pointsInDirectFid, 4, self.nusPoints), order='F')
+        self.nusData = np.reshape(
+            self.nusData, (self.pointsInDirectFid, 4, self.nusPoints), order="F"
+        )
         self.convertedNUSData = []  # placeholder
         # remove bruker filter
-        print('remove bruker filter')
+        print("remove bruker filter")
         self.convertBruker(grpdly)
 
     def truncate(self, trunc):
-        '''
+        """
         This function truncates the nusData, nusList and convertedNUSData variables to have only
         'trunc' number of sampled points
-        '''
+        """
         self.nusList = self.nusList[0:trunc]
         self.nusData = self.nusData[:, :, 0:trunc]
         self.convertedNUSData = self.convertedNUSData[:, :, 0:trunc]
         self.nusPoints = len(self.nusList)
 
-    def convertBruker(self,
-                      grpdly
-                      ):
+    def convertBruker(self, grpdly):
         # edit the number of points in first dimension after Bruker filter removal
-        self.points = len(remove_bruker_delay(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly))
+        self.points = len(
+            remove_bruker_delay(make_complex(np.copy(self.nusData[:, 0, 0])), grpdly)
+        )
         # zero fill in a 3D matrix with complex zeros
-        self.convertedNUSData = np.zeros((self.points, 4, self.nusPoints), dtype='complex128')
+        self.convertedNUSData = np.zeros(
+            (self.points, 4, self.nusPoints), dtype="complex128"
+        )
         # load the data
         for ii in range(self.nusPoints):  #
             for i in range(4):
-                fid = remove_bruker_delay(make_complex(np.copy(self.nusData[:, i, ii])), grpdly)
-                self.convertedNUSData[0:len(fid), i, ii] = fid
+                fid = remove_bruker_delay(
+                    make_complex(np.copy(self.nusData[:, i, ii])), grpdly
+                )
+                self.convertedNUSData[0 : len(fid), i, ii] = fid
 
     def orderData(self):
         # we want some way to know the order of the samples. This generates indexes
@@ -1392,8 +1719,12 @@ class NUSData3D:
         self.orderedNUSlistIndex = np.lexsort((self.nusList[:, 0], self.nusList[:, 1]))
         # print(self.nusList[self.ordered_nuslist_index])
         # orderedData = np.zeros( 2**self.nusDimensions * self.nusPoints * self.pointsInDirectFid)
-        orderedData = np.zeros((self.pointsInDirectFid, 4, self.nusPoints), dtype='int64')
-        orderedConvertedData = np.zeros((self.points, 4, self.nusPoints), dtype='complex128')
+        orderedData = np.zeros(
+            (self.pointsInDirectFid, 4, self.nusPoints), dtype="int64"
+        )
+        orderedConvertedData = np.zeros(
+            (self.points, 4, self.nusPoints), dtype="complex128"
+        )
         for i, point in enumerate(self.orderedNUSlistIndex):
             # self.nusData[:,i,ii]
             orderedData[:, :, i] = self.nusData[:, :, point]
@@ -1404,10 +1735,10 @@ class NUSData3D:
         self.nusList = self.nusList[self.orderedNUSlistIndex]
 
     def writeSer(self, file):
-        f = open(file, 'wb')
-        f.write(self.nusData.flatten(order='F').astype('<i4'))
+        f = open(file, "wb")
+        f.write(self.nusData.flatten(order="F").astype("<i4"))
 
     def writeNuslist(self, file):
         # f = open(file, 'w')
         # f.write(str(self.nuslist))
-        np.savetxt(file, self.nusList, fmt='%i', delimiter='\t')
+        np.savetxt(file, self.nusList, fmt="%i", delimiter="\t")
