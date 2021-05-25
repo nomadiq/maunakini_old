@@ -260,31 +260,25 @@ def default_1H15N_params():
     return params
 
 
-def tc_tract_algebraic(Ra, Rb, field, params=None):
+def tc_tract_algebraic(Ra, Rb, field, p=None):
 
-    if not params:  # use these defaults
-        params = default_1H15N_params()
+    if not p:  # use these defaults
+        p = Default_Params()
 
-    h = params["h"]
-    mu_0 = params["mu_0"]
-    gamma_H = params["gamma_H"]
-    gamma_N = params["gamma_N"]
-    r = params["r"]
-    delta_dN = params["delta_dN"]
-    theta = params["theta"]
-
-    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H  # in Tesla
-    p = (
-        mu_0
-        * gamma_H
-        * gamma_N
-        * h
-        / (16 * np.pi * np.pi * np.sqrt(2) * np.power(r, 3))
+    B_0 = (
+        field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / p.gamma_H
+    )  # in Tesla
+    d = (
+        p.mu_0
+        * p.gamma_H
+        * p.gamma_N
+        * p.h
+        / (16 * np.pi * np.pi * np.sqrt(2) * np.power(p.r, 3))
     )  # DD 1H-15N bond
-    dN = gamma_N * B_0 * delta_dN / (3 * np.sqrt(2))  # 15N CSA
-    w_N = B_0 * gamma_N  # 15N frequency (radians/s)
+    dN = p.gamma_N * B_0 * p.delta_dN / (3 * np.sqrt(2))  # 15N CSA
+    w_N = B_0 * p.gamma_N  # 15N frequency (radians/s)
 
-    c = (Rb - Ra) / (2 * dN * p * (3 * np.cos(theta) ** 2 - 1))
+    c = (Rb - Ra) / (2 * dN * d * (3 * np.cos(p.theta) ** 2 - 1))
 
     t1 = (5 * c) / 24
     t2 = (336 * (w_N ** 2) - 25 * (c ** 2) * (w_N ** 4)) / (
@@ -318,31 +312,25 @@ def tc_tract_algebraic(Ra, Rb, field, params=None):
     return t1 - t2 + t3
 
 
-def tc_tract_algebraic_S2(Ra, Rb, field, S2, params=None):
+def tc_tract_algebraic_S2(Ra, Rb, field, S2, p=None):
 
-    if not params:  # use these defaults
-        params = default_1H15N_params()
+    if not p:  # use these defaults
+        p = Default_Params()
 
-    h = params["h"]
-    mu_0 = params["mu_0"]
-    gamma_H = params["gamma_H"]
-    gamma_N = params["gamma_N"]
-    r = params["r"]
-    delta_dN = params["delta_dN"]
-    theta = params["theta"]
-
-    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H  # in Tesla
-    p = (
-        mu_0
-        * gamma_H
-        * gamma_N
-        * h
-        / (16 * np.pi * np.pi * np.sqrt(2) * np.power(r, 3))
+    B_0 = (
+        field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / p.gamma_H
+    )  # in Tesla
+    d = (
+        p.mu_0
+        * p.gamma_H
+        * p.gamma_N
+        * p.h
+        / (16 * np.pi * np.pi * np.sqrt(2) * np.power(p.r, 3))
     )  # DD 1H-15N bond
-    dN = gamma_N * B_0 * delta_dN / (3 * np.sqrt(2))  # 15N CSA
-    w_N = B_0 * gamma_N  # 15N frequency (radians/s)
+    dN = p.gamma_N * B_0 * p.delta_dN / (3 * np.sqrt(2))  # 15N CSA
+    w_N = B_0 * p.gamma_N  # 15N frequency (radians/s)
 
-    c = (Rb - Ra) / (2 * dN * p * (3 * np.cos(theta) ** 2 - 1))
+    c = (Rb - Ra) / (2 * dN * d * (3 * np.cos(p.theta) ** 2 - 1))
     w = w_N
 
     t1 = (
@@ -389,53 +377,36 @@ def tc_tract_algebraic_S2(Ra, Rb, field, S2, params=None):
     return t1 + t2 + t3
 
 
-def R1_field_tc_S2(field, t_c, S2, params=None):
-    if not params:  # use these defaults
-        params = default_1H15N_params()
+def R1_field_tc_S2(field, t_c, S2, p=None):
+    if not p:  # use these defaults
+        p = Default_Params()
 
-    h = params["h"]
-    mu_0 = params["mu_0"]
-    gamma_H = params["gamma_H"]
-    gamma_N = params["gamma_N"]
-    r = params["r"]
-    delta_dN = params["delta_dN"]
-    theta = params["theta"]
-
-    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H
-    d_N = gamma_N * B_0 * delta_dN / (3 * np.sqrt(2))  # 15N CSA
-    w_N = B_0 * gamma_N  # 15N frequency (radians/s)
-    w_H = B_0 * gamma_H
+    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / p.gamma_H
+    d_N = p.gamma_N * B_0 * p.delta_dN / (3 * np.sqrt(2))  # 15N CSA
+    w_N = B_0 * p.gamma_N  # 15N frequency (radians/s)
+    w_H = B_0 * p.gamma_H
 
     # equations from Palmer 2001 (Annual Reviews) https://doi.org/10.1146/annurev.biophys.30.1.129
-    d = h * mu_0 * gamma_N * gamma_H / ((r ** 3) * 8 * np.pi * np.pi)
-    c = (delta_dN * w_N) / np.sqrt(3)
+    d = p.h * p.mu_0 * p.gamma_N * p.gamma_H / ((p.r ** 3) * 8 * np.pi * np.pi)
+    c = (p.delta_dN * w_N) / np.sqrt(3)
 
     return ((d ** 2) / 4) * (
         6 * J_S2(w_H + w_N, t_c, S2) + J_S2(w_H - w_N, t_c, S2) + 3 * J_S2(w_N, t_c, S2)
     ) + c ** 2 * J_S2(w_N, t_c, S2)
 
 
-def R2_field_tc_S2(field, t_c, S2, params=None):
-    if not params:  # use these defaults
-        params = default_1H15N_params()
+def R2_field_tc_S2(field, t_c, S2, p=None):
+    if not p:  # use these defaults
+        p = Default_Params()
 
-    h = params["h"]
-    mu_0 = params["mu_0"]
-    gamma_H = params["gamma_H"]
-    gamma_N = params["gamma_N"]
-    r = params["r"]
-    delta_dN = params["delta_dN"]
-    theta = params["theta"]
-
-    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H
-
-    d_N = gamma_N * B_0 * delta_dN / (3 * np.sqrt(2))  # 15N CSA
-    w_N = B_0 * gamma_N  # 15N frequency (radians/s)
-    w_H = B_0 * gamma_H
+    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / p.gamma_H
+    d_N = p.gamma_N * B_0 * p.delta_dN / (3 * np.sqrt(2))  # 15N CSA
+    w_N = B_0 * p.gamma_N  # 15N frequency (radians/s)
+    w_H = B_0 * p.gamma_H
 
     # equations from Palmer 2001 (Annual Reviews) https://doi.org/10.1146/annurev.biophys.30.1.129
-    d = h * mu_0 * gamma_N * gamma_H / ((r ** 3) * 8 * np.pi * np.pi)
-    c = (delta_dN * w_N) / np.sqrt(3)
+    d = p.h * p.mu_0 * p.gamma_N * p.gamma_H / ((p.r ** 3) * 8 * np.pi * np.pi)
+    c = (p.delta_dN * w_N) / np.sqrt(3)
 
     return ((d ** 2) / 8) * (
         6 * J_S2(w_H + w_N, t_c, S2)
@@ -452,6 +423,28 @@ def R2_field_tc_S2(field, t_c, S2, params=None):
 
 
 class Default_Params:
+    """
+    Default numerical parameters for NMR properties and physical constants
+
+    h: Plank's constant
+    mu_0: vacuum permeability
+    r: bond length. specifically H-N
+    delta_dN: CSA value for H-N
+    theta: angle between bond and CSA tensor, specifically H-N
+    gamma_H: proton gyromagnetic ratio
+    gamma_N: 15N gyromagnetic ratio
+
+    You can add further parameters at class instantiation time:
+    p = mk.Default_Params(params)
+    where params is a dictionary, e.g.
+    params = {
+        'gamma_C': 67.2828 * np.power(10, 6, dtype=np.float128),
+        'gamma_D': 41065000.0,
+        }
+
+    parameter values must be floats or np.floating
+    """
+
     def __init__(self, params=None):
         self.h = 6.62607004 * (1 / np.power(10, 34, dtype=np.longdouble))  # Plank's
         self.mu_0 = 1.25663706 * (
@@ -481,14 +474,17 @@ class Default_Params:
                     var = params[key]
                     if isinstance(var, (float, np.floating)):
                         setattr(self, key, var)
-
                     else:
                         print(
-                            "param value is not a float\nparams will be default values only"
+                            "param value is not a float or numpy float\nparams will be default values only"
                         )
 
 
 class Scale:
+    """
+    A Scale Class
+    """
+
     def __init__(self, domainrange, outrange, strict=False):
 
         self.d_min = domainrange[0]
