@@ -238,7 +238,7 @@ def J_S2(w, tc, S2):
     return S2 * J(w, tc)
 
 
-def default_tract_params():
+def default_1H15N_params():
     params = {"h": 6.62607004 * (1 / np.power(10, 34, dtype=np.longdouble))}  # Plank's
     params["mu_0"] = 1.25663706 * (
         1 / np.power(10, 6, dtype=np.longdouble)
@@ -263,7 +263,7 @@ def default_tract_params():
 def tc_tract_algebraic(Ra, Rb, field, params=None):
 
     if not params:  # use these defaults
-        params = default_tract_params()
+        params = default_1H15N_params()
 
     h = params["h"]
     mu_0 = params["mu_0"]
@@ -321,7 +321,7 @@ def tc_tract_algebraic(Ra, Rb, field, params=None):
 def tc_tract_algebraic_S2(Ra, Rb, field, S2, params=None):
 
     if not params:  # use these defaults
-        params = default_tract_params()
+        params = default_1H15N_params()
 
     h = params["h"]
     mu_0 = params["mu_0"]
@@ -387,6 +387,63 @@ def tc_tract_algebraic_S2(Ra, Rb, field, S2, params=None):
     t3 = +(5 * c) / (24 * S2)
 
     return t1 + t2 + t3
+
+
+def R1_field_tc_S2(field, t_c, S2, params=None):
+    if not params:  # use these defaults
+        params = default_1H15N_params()
+
+    h = params["h"]
+    mu_0 = params["mu_0"]
+    gamma_H = params["gamma_H"]
+    gamma_N = params["gamma_N"]
+    r = params["r"]
+    delta_dN = params["delta_dN"]
+    theta = params["theta"]
+
+    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H
+    d_N = gamma_N * B_0 * delta_dN / (3 * np.sqrt(2))  # 15N CSA
+    w_N = B_0 * gamma_N  # 15N frequency (radians/s)
+    w_H = B_0 * gamma_H
+
+    # equations from Palmer 2001 (Annual Reviews) https://doi.org/10.1146/annurev.biophys.30.1.129
+    d = h * mu_0 * gamma_N * gamma_H / ((r ** 3) * 8 * np.pi * np.pi)
+    c = (delta_dN * w_N) / np.sqrt(3)
+
+    return ((d ** 2) / 4) * (
+        6 * J_S2(w_H + w_N, t_c, S2) + J_S2(w_H - w_N, t_c, S2) + 3 * J_S2(w_N, t_c, S2)
+    ) + c ** 2 * J_S2(w_N, t_c, S2)
+
+
+def R2_field_tc_S2(field, t_c, S2, params=None):
+    if not params:  # use these defaults
+        params = default_1H15N_params()
+
+    h = params["h"]
+    mu_0 = params["mu_0"]
+    gamma_H = params["gamma_H"]
+    gamma_N = params["gamma_N"]
+    r = params["r"]
+    delta_dN = params["delta_dN"]
+    theta = params["theta"]
+
+    B_0 = field * np.power(10, 6, dtype=np.longdouble) * 2 * np.pi / gamma_H
+
+    d_N = gamma_N * B_0 * delta_dN / (3 * np.sqrt(2))  # 15N CSA
+    w_N = B_0 * gamma_N  # 15N frequency (radians/s)
+    w_H = B_0 * gamma_H
+
+    # equations from Palmer 2001 (Annual Reviews) https://doi.org/10.1146/annurev.biophys.30.1.129
+    d = h * mu_0 * gamma_N * gamma_H / ((r ** 3) * 8 * np.pi * np.pi)
+    c = (delta_dN * w_N) / np.sqrt(3)
+
+    return ((d ** 2) / 8) * (
+        6 * J_S2(w_H + w_N, t_c, S2)
+        + 6 * J_S2(w_H, t_c, S2)
+        + J_S2(w_H - w_N, t_c, S2)
+        + 3 * J_S2(w_N, t_c, S2)
+        + 4 * J_S2(0, t_c, S2)
+    ) + ((c ** 2) / 6) * (3 * J_S2(w_N, t_c, S2) + 4 * J_S2(0, t_c, S2))
 
 
 # ------------------------------------- #
