@@ -451,6 +451,43 @@ def R2_field_tc_S2(field, t_c, S2, params=None):
 # ------------------------------------- #
 
 
+class Default_Params:
+    def __init__(self, params=None):
+        self.h = 6.62607004 * (1 / np.power(10, 34, dtype=np.longdouble))  # Plank's
+        self.mu_0 = 1.25663706 * (
+            1 / np.power(10, 6, dtype=np.longdouble)
+        )  # vacuum permeability
+        self.gamma_H = 267.52218744 * np.power(
+            10, 6, dtype=np.longdouble
+        )  # proton gyromagnetic ratio
+        self.gamma_N = -27.116 * np.power(
+            10, 6, dtype=np.longdouble
+        )  # 15N gyromagnetic ratio
+        self.r = 1.02 * (
+            1 / np.power(10, 10, dtype=np.longdouble)
+        )  # internuclear distance
+        self.delta_dN = 160 * (
+            1 / np.power(10, 6)
+        )  # diff in axially symetric 15N CS tensor
+        self.theta = 17 * np.pi / 180  # angle between CSA axis and N-H bond
+
+        if params is not None:
+            if not isinstance(params, dict):
+                print(
+                    "optional params are not in form of dictionary\nparams will be default values only"
+                )
+            else:
+                for key in params.keys():
+                    var = params[key]
+                    if isinstance(var, (float, np.floating)):
+                        setattr(self, key, var)
+
+                    else:
+                        print(
+                            "param value is not a float\nparams will be default values only"
+                        )
+
+
 class Scale:
     def __init__(self, domainrange, outrange, strict=False):
 
